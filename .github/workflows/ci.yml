@@ -1,0 +1,23 @@
+name: Windows checks
+on: [push, pull_request]
+jobs:
+  build-and-scan:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build application and integration fixtures
+        shell: powershell
+        run: .\build.ps1 -BuildTests
+      - name: Static configuration and privacy checks
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts\ScanPrivacy.py
+          exit $LASTEXITCODE
+      # Native console tests require an interactive desktop. Run build.ps1 -Test locally.

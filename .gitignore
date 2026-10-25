@@ -1,0 +1,14 @@
+/bin/
+/obj/
+/dist/
+/artifacts/
+/.local/
+/.vs/
+/.env*
+*.conf
+*.log
+*.csv
+*.user
+settings.json
+!*.example.json
+__pycache__/

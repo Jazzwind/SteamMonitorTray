@@ -1,0 +1,186 @@
+# SteamMonitorTray
+
+为 [steam_monitor](https://github.com/misiektoja/steam_monitor) 提供 Windows 托盘、原生 PowerShell 窗口、多配置管理和登录自启动。
+
+每份配置拥有独立的 PowerShell 会话。收进托盘后监测继续，恢复窗口仍是原来的输出现场。停止使用真正的 Ctrl+C，停止后回到 PowerShell 提示符。
+
+## 环境要求
+
+- Windows 10 / 11，.NET Framework 4.8。
+- Windows PowerShell 5.1 与 PSReadLine 2.0 或以上。
+- 已安装 Python 和 `steam_monitor`；当前兼容验证基于 `steam_monitor 2.1`。
+- 为每个账号准备一份保存了默认目标的 `steam_monitor.conf`，凭据放在对应 `.env` 中。
+
+本项目独立调用上游程序，不附带、修改或自动升级它。上游代码遵循其 GPL-3.0 许可，本项目自行编写的包装器采用 MIT 许可。不是 Valve 官方产品。
+
+## 快速开始
+
+### 从源码构建
+
+在项目目录打开 PowerShell：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+使用系统自带的 .NET Framework C# 编译器，无需安装 .NET SDK 或下载 NuGet 依赖。程序位于 `bin\SteamMonitorTray.exe`。
+
+### 选择已有配置
+
+双击程序，首次启动时打开设置。添加现有配置目录，核对监测程序、工作目录、配置文件与环境文件路径，然后保存。
+
+也可以在程序尚未运行时导入目录并注册自启动：
+
+```powershell
+.\install.ps1 -ProfileDirectory 'D:\SteamProfiles\Primary'
+```
+
+已有目录中的 `.env`、配置和历史不会被复制到仓库。上述路径只是示例；不要把真实配置或凭据粘贴进项目源码。
+
+只导入配置，暂时不注册自启动：
+
+```powershell
+.\install.ps1 -ProfileDirectory 'D:\SteamProfiles\Primary' -NoStartup
+```
+
+从便携发布包使用时，程序就在解压目录，直接运行 `SteamMonitorTray.exe`；无需构建。
+
+## 托盘和窗口
+
+- 双击托盘图标：显示已有窗口。
+- 每份配置提供显示、隐藏、启动、停止、打开日志文件夹。
+- 顶部提供全部启动、全部停止；配置名称由用户自己命名。
+- 最小化控制台会收进托盘。监测期间禁用右上角关闭按钮，避免 Windows 直接关闭整个控制台。
+- “退出程序”先向全部监测实例发送 Ctrl+C，待监测退出后再正常退出 PowerShell。
+- 如果 30 秒内还没有停止，状态显示“仍在等待停止”；可以继续等或再次发送 Ctrl+C，程序不会自动强杀。
+
+停止之后可以输入普通 PowerShell 命令，也可以直接输入 `steam_monitor` 再次启动。包装函数只存在于本工具创建的会话里，不改动你的 PowerShell 用户配置。
+
+托盘启动请求通过当前用户专用命名管道和会话内 PSReadLine F24 绑定进入空闲提示符，不使用抢焦点的 SendKeys。已有未提交命令时拒绝插入并提示忙碌，输入保持原样。
+
+手动使用**完整可执行文件路径**绕过 `steam_monitor` 包装函数，或在该终端自行启动后台任务，不属于托盘可管理的监测调用。请通过托盘或直接输入 `steam_monitor` 使用管理功能。交互式设置、帮助、doctor 等一次性命令不作为监测实例计数。
+
+控制台采用 Windows Console Host 的原生窗口，而不是 Windows Terminal 标签页。不会修改系统默认终端。
+
+## 三种启动显示策略
+
+托盘“启动显示方式”和设置窗口都可切换：
+
+| 策略 | 手动启动 | 登录启动 |
+| --- | --- | --- |
+| 手动显示，自动进托盘（默认） | 显示窗口 | 留在托盘 |
+| 两种启动都进托盘 | 留在托盘 | 留在托盘 |
+| 两种启动都显示窗口 | 显示窗口 | 显示窗口 |
+
+两种入口都自动启动已启用的配置。修改策略影响下次启动；当前窗口可以单独显示或隐藏。
+
+程序本体为无控制台的 Windows 可执行文件，会话控制台从创建时就隐藏，需要时才显示。不是先弹出再隐藏。自动化测试会监听窗口显示事件，检查托盘启动时没有初始显示事件；真实登录启动还应按文末清单实机检查。
+
+## 登录自启动与任务管理器
+
+托盘选择“注册登录自启动”，或运行 `install.ps1`。程序在**当前用户**启动文件夹创建 `SteamMonitorTray.lnk`，直接指向 EXE 并传入 `--startup`。
+
+打开任务管理器 → **启动应用**，找到 **SteamMonitorTray**，即可启用或禁用。也可以按 `Win+R`，输入 `shell:startup` 查看快捷方式。这里的开机启动指登录 Windows 后启动，不是登录前的系统服务。
+
+安装操作不修改 Windows 的 `StartupApproved` 禁用记录；你在任务管理器中禁用后，应用不会擅自重新启用。安装或移动仓库后需要重新注册快捷方式，确保目标路径有效。
+
+移除自启动：
+
+```powershell
+.\uninstall.ps1
+```
+
+卸载脚本只删除本项目的启动快捷方式，不终止监测，不删除配置、历史或项目目录。请从托盘正常退出。
+
+## 多账号
+
+上游一次调用只监测一个默认目标。为另一个账号准备**另一份配置**，在设置中添加并命名，即可分别或全部启停。不同配置可以引用同一份 `.env`，不必复制凭据。
+
+每份配置的日志、CSV、状态文件和启用游戏库检查时的快照必须分开。启动前会通过 Python AST 静态检查文件路径，阻止重复输出。不会执行配置来做检查，也不会把检查结果写入包装器日志。
+
+默认目标建议保存为数字 Steam64 ID。使用非数字目标时，需要明确设置 `FILE_SUFFIX` 和 `STEAM_STATUS_FILE`，游戏库快照检查则需要数字目标，避免错误猜测上游解析后的文件名。
+
+设置窗口只管理文件引用，不编辑 API key、webhook 或目标。新增目标仍使用上游 `steam_monitor --setup`；生成的私人文件应保存在仓库以外。
+
+配置会话存在时，配置字段暂不可修改。先停止监测，在对应 PowerShell 提示符输入 `exit` 关闭窗口，再打开设置。全局启动策略与恢复开关仍可修改。
+
+## 状态与恢复
+
+状态包括正在启动、监测进程运行、正在停止、已停止、等待重试、异常。**进程运行不代表 Steam API、Discord 或网络始终健康**，具体情况以原程序输出为准。
+
+监测非零异常退出后默认在 5、15、30 秒后各重试一次，三次重试仍失败则停止；持续运行十分钟重置重试预算。手动停止、键盘 Ctrl+C、零退出码正常结束及主动退出会取消重试。上游自身处理的断网不会触发包装器重启。
+
+托盘正常退出时，如果提示符中已有未提交输入，会拒绝覆盖并取消退出；请完成或清空输入后重试。如果正在执行其他 PowerShell 命令，则等待它回到提示符。
+
+## 本地文件与隐私
+
+本地设置：`%LOCALAPPDATA%\SteamMonitorTray\settings.json`。
+
+本地会话描述：同目录 `sessions` 下的临时文件，正常退出后清理。目录权限限制为当前用户和 SYSTEM。命名管道限制为当前用户，并校验每个会话生成的随机令牌。
+
+本地包装器日志：同目录 `launcher.log`，限制大小，仅记录随机配置标识、状态和错误类型。不会收集原监测输出全文、API key、webhook、SteamID 或配置内容。
+
+以下内容不应进入 GitHub：
+
+- `.env`、真实 `steam_monitor.conf`、本地 `settings.json`。
+- 监测日志、CSV、状态 JSON、游戏库快照、设置过程记录。
+- 含目标账号、密钥、webhook 或个人目录的截图。
+
+`.gitignore` 已排除运行目录及常见私人文件。发布包使用明确的文件白名单，不会打包整个 `bin` 或运行目录。扫描同时覆盖源文件、暂存区、可达提交历史及发布 ZIP；这不能替代人工审阅。
+
+## 测试和打包
+
+在普通交互式 Windows 会话中运行，不要在限制控制台/命名管道的沙箱内执行集成测试：
+
+```powershell
+.\build.ps1 -Test
+python .\scripts\ScanPrivacy.py
+.\package.ps1
+```
+
+测试只运行本地 FakeMonitor，不使用真实配置，不连接 Steam 或 Discord。覆盖隐藏启动、真实 Ctrl+C 清理、实例隔离、输入保留、原生提示符、手动启停同步、输出冲突、管理器重试上限和正常退出。测试产物位于已忽略的 `artifacts` 中。
+
+发布 ZIP 位于 `dist`。这是便携运行包，Python 和 `steam_monitor` 需由使用者自行安装。构建脚本兼容 Windows PowerShell 5.1；复制到发布目录的会话脚本使用 UTF-8 BOM，避免中文乱码。
+
+## 用另一个 GitHub 账号发布
+
+项目不会自动创建仓库，也不会使用当前连接的 GitHub 账号上传。
+
+1. 在浏览器登录你**希望发布项目的另一个账号**，进入 [新建仓库](https://github.com/new)，名称填 `SteamMonitorTray`，选择 Public 或 Private。创建空仓库，不勾选自动添加 README、许可证或 gitignore。
+2. 在本地项目目录打开 PowerShell，完成构建、测试和隐私扫描。再次确认真实配置均保存在项目外。
+3. 如果目录尚未初始化 Git，执行：
+
+   ```powershell
+   git init -b main
+   git config --local user.name "YOUR_GITHUB_NAME"
+   git config --local user.email "YOUR_GITHUB_NOREPLY_EMAIL"
+   git add .gitignore README.md LICENSE build.ps1 install.ps1 uninstall.ps1 package.ps1 src scripts tests docs .github
+   git diff --cached --stat
+   python .\scripts\ScanPrivacy.py
+   git commit -m "Initial SteamMonitorTray implementation"
+   ```
+
+   `user.name` 和 `user.email` 只是提交署名，**不会切换上传账号**。邮箱可以从另一个账号的 GitHub Settings → Emails 复制 noreply 地址。
+
+4. 把下面占位地址替换为该账号刚创建的仓库地址，再执行：
+
+   ```powershell
+   git remote add origin https://github.com/YOUR_OTHER_ACCOUNT/SteamMonitorTray.git
+   git remote -v
+   git push -u origin main
+   ```
+
+   若已经存在 `origin`，用 `git remote set-url origin <新仓库地址>` 更新，不要重复添加。Git Credential Manager 弹出登录时选用另一个账号；如果自动使用了错误账号，在 Windows 凭据管理器中仅移除或更新对应 GitHub 凭据，再重试。不要把 token 写进仓库地址或脚本。
+
+5. 推送后在浏览器检查仓库文件列表，确认没有私人配置或监测数据。`bin`、`dist`、`artifacts` 都不应出现在源码仓库中。
+6. 如需给别人下载 EXE，在 GitHub → Releases → Draft a new release 创建版本，例如 `v1.0.0`，上传 `package.ps1` 生成并通过扫描的 ZIP。不要上传本地运行目录。
+
+## 真实机器验收
+
+- 三种显示模式分别手动测试；托盘模式不能闪黑框或出现任务栏窗口。
+- 最小化、显示、隐藏均保持原有输出和监测运行。
+- 任务管理器禁用启动项后重新登录不启动，重新启用后按策略启动。
+- 登录初期网络不可用时检查原监测输出，不要把“进程运行”当成网络健康。
+- 确认原来的日志、CSV 和状态文件继续写入原目录。
+
+自动测试不替代真实注销/登录检查；程序不会为了验证自启动而自动注销或重启你的电脑。
