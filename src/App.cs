@@ -61,7 +61,7 @@ namespace SteamMonitorTray {
         private readonly Dictionary<string, Runtime> runtimes = new Dictionary<string, Runtime>();
         private readonly System.Windows.Forms.Timer timer;
         private bool quitting;
-        private bool menuRefreshPending;
+        internal readonly NativeMenu MenuPresenter = new NativeMenu();
         private static Icon StatusIcon(Color color, string state) {
             using (Bitmap bitmap = new Bitmap(32, 32)) {
                 using (Graphics g = Graphics.FromImage(bitmap)) {
@@ -83,6 +83,7 @@ namespace SteamMonitorTray {
             IntPtr handle = dispatcher.Handle;
             icon = new NotifyIcon { Icon = SystemIcons.Application, Text = "SteamMonitorTray", Visible = true };
             icon.MouseDoubleClick += delegate { ShowAll(); };
+            icon.MouseUp += delegate(object sender, MouseEventArgs e) { if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); };
             SynchronizeProfiles(); RefreshMenu();
             timer = new System.Windows.Forms.Timer { Interval = 250 }; timer.Tick += delegate { Tick(); }; timer.Start();
             dispatcher.BeginInvoke((Action)delegate {
@@ -189,7 +190,7 @@ namespace SteamMonitorTray {
                 if (quitting && r.Alive && !r.Running && !r.StartSent && r.Prompt && !r.ExitSent) { r.ExitSent = true; r.Client.Send("Exit"); }
             }
             if (quitting && runtimes.Values.All(r => !r.Alive)) {
-                timer.Stop(); icon.Visible = false; icon.Dispose(); runningIcon.Dispose(); stoppedIcon.Dispose(); warningIcon.Dispose(); foreach (Runtime r in runtimes.Values) if (r.Client != null) r.Client.Dispose(); dispatcher.Dispose(); ExitThread();
+                timer.Stop(); MenuPresenter.Dispose(); icon.Visible = false; icon.Dispose(); runningIcon.Dispose(); stoppedIcon.Dispose(); warningIcon.Dispose(); foreach (Runtime r in runtimes.Values) if (r.Client != null) r.Client.Dispose(); dispatcher.Dispose(); ExitThread();
             }
         }
         private void ShowAll() { foreach (Runtime r in runtimes.Values) if (r.Alive) r.Client.Send("Show"); }
@@ -198,11 +199,6 @@ namespace SteamMonitorTray {
             string previous = settings.Language;
             try { settings.Language = L.Normalize(code); SaveSettings(); L.SetLanguage(settings.Language); RefreshMenu(); }
             catch (Exception ex) { settings.Language = previous; L.SetLanguage(previous); Notice(Program.SafeError(ex)); }
-        }
-        private void UpdateStartupItem(ToolStripMenuItem item) {
-            StartupState state = startupRegistration.Read();
-            item.Checked = state.Registered; item.Text = state.MenuText; item.ToolTipText = state.Description;
-            item.ForeColor = state.HasWarning ? Color.DarkOrange : SystemColors.ControlText;
         }
         private void ToggleStartup() {
             try {
@@ -221,7 +217,7 @@ namespace SteamMonitorTray {
                 }
             }
         }
-        private ToolStripMenuItem Item(string text, Action action) { ToolStripMenuItem item = new ToolStripMenuItem(L.Text(text)); item.Click += delegate { action(); }; return item; }
+        private MenuEntry Item(string key, string text, Action action, bool enabled = true, bool isChecked = false) { return new MenuEntry(key, L.Text(text), action, enabled, isChecked); }
         private void RefreshMenu() {
             if (icon == null || dispatcher.IsDisposed) return;
             int running = runtimes.Values.Count(r => r.Running), total = settings.Profiles.Count(p => p.Enabled);
@@ -231,58 +227,58 @@ namespace SteamMonitorTray {
             if (nextText.Length > 63) nextText = nextText.Substring(0, 62) + "…";
             if (icon.Icon != nextIcon) icon.Icon = nextIcon;
             if (icon.Text != nextText) icon.Text = nextText;
-            ContextMenuStrip old = icon.ContextMenuStrip;
-            // Keep both the active menu and its submenus alive until the user's interaction ends.
-            if (old != null && old.Visible) { menuRefreshPending = true; return; }
-            menuRefreshPending = false;
-            ContextMenuStrip menu = new ContextMenuStrip { ShowCheckMargin = true, ShowImageMargin = false, ShowItemToolTips = true };
-            menu.RightToLeft = L.IsRtl ? RightToLeft.Yes : RightToLeft.No;
-            menu.Closed += delegate {
-                if (menuRefreshPending && !dispatcher.IsDisposed) dispatcher.BeginInvoke((Action)delegate {
-                    if (menuRefreshPending && !dispatcher.IsDisposed) RefreshMenu();
-                });
-            };
-            menu.Items.Add(new ToolStripMenuItem(L.Text("监测进程运行 {0}/{1}", running, total)) { Enabled = false });
-            menu.Items.Add(Item("全部启动", delegate { foreach (Runtime r in runtimes.Values) if (r.Profile.Enabled) Start(r, true); }));
-            menu.Items.Add(Item("全部停止", delegate { foreach (Runtime r in runtimes.Values) Stop(r); }));
-            menu.Items.Add(new ToolStripSeparator());
+            // The native popup owns its snapshot until it closes. Only icon state
+            // changes here; the next opening builds the latest menu from scratch.
+        }
+        internal MenuSnapshot CreateMenuSnapshot() {
+            List<MenuEntry> items = new List<MenuEntry>();
+            items.Add(new MenuEntry("Status", L.Text("监测进程运行 {0}/{1}", runtimes.Values.Count(r => r.Running), settings.Profiles.Count(p => p.Enabled)), enabled: false));
+            items.Add(Item("StartAll", "全部启动", delegate { foreach (Runtime r in runtimes.Values) if (r.Profile.Enabled) Start(r, true); }));
+            items.Add(Item("StopAll", "全部停止", delegate { foreach (Runtime r in runtimes.Values) Stop(r); }));
+            items.Add(MenuEntry.Separator());
             foreach (Runtime r in runtimes.Values) {
-                ToolStripMenuItem profile = new ToolStripMenuItem(L.Text("{0} — {1}", r.Profile.Name, L.Text(r.Status)));
-                profile.DropDown.RightToLeft = menu.RightToLeft;
-                profile.ForeColor = r.Running ? Color.ForestGreen : (r.Status.Contains("异常") || r.Status.Contains("等待") ? Color.DarkOrange : Color.DimGray);
-                profile.DropDownItems.Add(Item("显示窗口", delegate { if (r.Alive) r.Client.Send("Show"); }));
-                profile.DropDownItems.Add(Item("隐藏窗口", delegate { if (r.Alive) r.Client.Send("Hide"); }));
-                ToolStripMenuItem start = Item("启动监测", delegate { Start(r, true); }); start.Enabled = !r.Running && !r.StartSent && !r.Stopping && r.Profile.Enabled; profile.DropDownItems.Add(start);
-                profile.DropDownItems.Add(Item(r.Stopping ? "再次发送 Ctrl+C" : "停止监测", delegate { Stop(r); }));
-                profile.DropDownItems.Add(Item("打开日志文件夹", delegate { try { Process.Start("explorer.exe", Native.Quote(r.Profile.LogDirectory)); } catch (Exception ex) { Notice(Program.SafeError(ex)); } }));
-                menu.Items.Add(profile);
+                string key = "Profile." + r.Profile.Id;
+                items.Add(new MenuEntry(key, L.Text("{0} — {1}", r.Profile.Name, L.Text(r.Status)), children: new MenuEntry[] {
+                    Item(key + ".Show", "显示窗口", delegate { if (r.Alive) r.Client.Send("Show"); }),
+                    Item(key + ".Hide", "隐藏窗口", delegate { if (r.Alive) r.Client.Send("Hide"); }),
+                    Item(key + ".Start", "启动监测", delegate { Start(r, true); }, !r.Running && !r.StartSent && !r.Stopping && r.Profile.Enabled),
+                    Item(key + ".Stop", r.Stopping ? "再次发送 Ctrl+C" : "停止监测", delegate { Stop(r); }),
+                    Item(key + ".Logs", "打开日志文件夹", delegate { try { Process.Start("explorer.exe", Native.Quote(r.Profile.LogDirectory)); } catch (Exception ex) { Notice(Program.SafeError(ex)); } })
+                }));
             }
-            menu.Items.Add(new ToolStripSeparator());
-            ToolStripMenuItem settingsItem = Item("设置与多配置管理…", EditSettings); settingsItem.Name = "Settings"; menu.Items.Add(settingsItem);
-            ToolStripMenuItem localSettingsItem = Item("打开本地设置目录", delegate { Process.Start("explorer.exe", Native.Quote(Files.DataRoot)); }); localSettingsItem.Name = "LocalSettings"; menu.Items.Add(localSettingsItem);
-            ToolStripMenuItem startupItem = Item("开机自启动", ToggleStartup); startupItem.Name = "StartupToggle";
-            UpdateStartupItem(startupItem); menu.Items.Add(startupItem);
-            // Read the actual shortcut and Windows approval again on every opening, including external Task Manager changes.
-            menu.Opening += delegate { UpdateStartupItem(startupItem); };
-            ToolStripMenuItem modes = new ToolStripMenuItem(L.Text("启动时隐藏窗口")); modes.DropDown.RightToLeft = menu.RightToLeft;
-            modes.Name = "LaunchDisplay";
+            items.Add(MenuEntry.Separator());
+            items.Add(Item("Settings", "设置与多配置管理…", EditSettings));
+            items.Add(Item("LocalSettings", "打开本地设置目录", delegate { Process.Start("explorer.exe", Native.Quote(Files.DataRoot)); }));
+            StartupState startupState = startupRegistration.Read();
+            items.Add(new MenuEntry("StartupToggle", startupState.MenuText, ToggleStartup, isChecked: startupState.Registered));
+            List<MenuEntry> modes = new List<MenuEntry>();
             string[] keys = { "AlwaysWindow", "ManualWindowStartupTray", "AlwaysTray" }, labels = { "不隐藏", "仅开机自启动时隐藏", "每次启动时隐藏" };
             for (int i = 0; i < keys.Length; i++) {
-                string key = keys[i]; ToolStripMenuItem item = Item(labels[i], delegate { settings.LaunchMode = key; SaveSettings(); RefreshMenu(); });
-                item.Checked = settings.LaunchMode == key; modes.DropDownItems.Add(item);
+                string key = keys[i];
+                modes.Add(Item("LaunchDisplay." + key, labels[i], delegate { settings.LaunchMode = key; SaveSettings(); RefreshMenu(); }, isChecked: settings.LaunchMode == key));
             }
-            menu.Items.Add(modes);
-            ToolStripMenuItem languages = new ToolStripMenuItem(L.Text("语言")) { Name = "Language" }; languages.DropDown.RightToLeft = menu.RightToLeft;
-            ToolStripMenuItem automatic = Item("自动（跟随系统）", delegate { SetLanguage("auto"); }); automatic.Checked = settings.Language == "auto"; languages.DropDownItems.Add(automatic);
+            items.Add(new MenuEntry("LaunchDisplay", L.Text("启动时隐藏窗口"), children: modes.ToArray()));
+            List<MenuEntry> languages = new List<MenuEntry>();
+            languages.Add(Item("Language.auto", "自动（跟随系统）", delegate { SetLanguage("auto"); }, isChecked: settings.Language == "auto"));
             for (int i = 0; i < L.Codes.Length; i++) {
-                string code = L.Codes[i]; ToolStripMenuItem languageItem = new ToolStripMenuItem(L.Names[i]);
-                languageItem.Checked = settings.Language == code; languageItem.Click += delegate { SetLanguage(code); }; languages.DropDownItems.Add(languageItem);
+                string code = L.Codes[i];
+                languages.Add(new MenuEntry("Language." + code, L.Names[i], delegate { SetLanguage(code); }, isChecked: settings.Language == code));
             }
-            menu.Items.Add(languages);
-            menu.Items.Add(new ToolStripSeparator()); menu.Items.Add(Item("退出程序", Quit));
-            // Do not dispose a menu while one of its click handlers is executing.
-            icon.ContextMenuStrip = menu;
-            if (old != null) dispatcher.BeginInvoke((Action)delegate { old.Dispose(); });
+            items.Add(new MenuEntry("Language", L.Text("语言"), children: languages.ToArray()));
+            items.Add(MenuEntry.Separator()); items.Add(Item("Quit", "退出程序", Quit));
+            return new MenuSnapshot(items, L.IsRtl);
+        }
+        internal void ShowMenu(Point position) {
+            if (dispatcher.IsDisposed || MenuPresenter.IsOpen) return;
+            try {
+                MenuEntry selected = MenuPresenter.Show(CreateMenuSnapshot(), position);
+                // Native handles have been released before any action can open a
+                // dialog, change language, stop a session or exit the application.
+                if (selected != null && !dispatcher.IsDisposed) selected.Invoke();
+            } catch (Exception ex) {
+                Files.Log("menu", ex.GetType().Name);
+                if (!dispatcher.IsDisposed) Notice("界面操作失败，请检查本地包装器日志。监测不会因此被强制终止。");
+            }
         }
     }
 }

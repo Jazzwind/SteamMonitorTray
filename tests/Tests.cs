@@ -8,6 +8,7 @@ using System.Text;
 using System.Reflection;
 using System.Collections;
 using System.Windows.Forms;
+using System.Windows.Automation;
 using SteamMonitorTray;
 
 internal static class Tests {
@@ -30,42 +31,60 @@ internal static class Tests {
         foreach (object runtime in all.Values) if ((bool)runtime.GetType().GetProperty("Alive").GetValue(runtime, null)) return true;
         return false;
     }
-    private static NotifyIcon ManagedIcon() { return (NotifyIcon)managerType.GetField("icon", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(manager); }
     private static void CheckMinimizedTrayMenu(Profile p) {
         object runtime = ManagedRuntime(p);
+        TrayContext context = (TrayContext)manager;
         SessionClient client = (SessionClient)runtime.GetType().GetField("Client").GetValue(runtime);
         int hiddenReports = 0;
         Action<Wire> count = delegate(Wire message) { if (message.Kind == "Hidden") Interlocked.Increment(ref hiddenReports); };
         client.Message += count;
-        ContextMenuStrip menu = null;
         try {
             client.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(client.Window); }, "show fixture before minimize", 5);
-            Native.ShowWindow(client.Window, 7); // SW_SHOWMINNOACTIVE: do not steal the user's keyboard focus.
+            Native.ShowWindow(client.Window, 7);
             Wait(delegate { return !Native.IsWindowVisible(client.Window); }, "minimize fixture into tray", 5);
-            menu = ManagedIcon().ContextMenuStrip; menu.AutoClose = false;
-            // AutoClose=false isolates application-triggered closure from unrelated user desktop input.
-            menu.Show(new System.Drawing.Point(20, 20));
-            ToolStripMenuItem profile = menu.Items.OfType<ToolStripMenuItem>().First(item => item.Text.StartsWith(p.Name + " — "));
-            profile.DropDown.AutoClose = false; profile.ShowDropDown();
-            Stopwatch opened = Stopwatch.StartNew();
-            while (opened.Elapsed.TotalMilliseconds < 800) { Application.DoEvents(); Thread.Sleep(20); }
-            Assert(menu.Visible && profile.DropDown.Visible && Object.ReferenceEquals(menu, ManagedIcon().ContextMenuStrip), "minimized monitor preserves open tray menu and submenu");
+            MenuSnapshot snapshot = null;
+            IntPtr original = IntPtr.Zero;
+            bool stable = false, fresh = false;
+            Exception workerError = null;
+            Thread worker = null;
+            using (System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 200 }) {
+                int ticks = 0;
+                timer.Tick += delegate {
+                    if (++ticks == 1) {
+                        snapshot = context.MenuPresenter.ActiveSnapshot; original = context.MenuPresenter.ActiveHandle;
+                        runtime.GetType().GetField("Status").SetValue(runtime, "测试状态更新"); ManagerAction("RefreshMenu", null);
+                        fresh = context.CreateMenuSnapshot().Items.First(item => item.Key == "Profile." + p.Id).Text.Contains("测试状态更新");
+                        IntPtr popup = NativeMenuTests.PopupWindow();
+                        worker = new Thread(delegate() {
+                            try {
+                                AutomationElement rootMenu = AutomationElement.FromHandle(popup);
+                                AutomationElement profile = rootMenu.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.NameProperty, snapshot.Items.First(item => item.Key == "Profile." + p.Id).Text));
+                                object pattern;
+                                if (profile.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out pattern)) ((ExpandCollapsePattern)pattern).Expand();
+                                else ((InvokePattern)profile.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                                Thread.Sleep(1200);
+                                AutomationElement stop = rootMenu.FindFirst(TreeScope.Subtree, new PropertyCondition(AutomationElement.NameProperty, "停止监测"));
+                                if (stop == null) throw new Exception("Native Stop submenu item not found.");
+                                ((InvokePattern)stop.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                            } catch (Exception ex) { workerError = ex; MenuNative.PostMessageW(context.MenuPresenter.Owner, 0x1F, IntPtr.Zero, IntPtr.Zero); }
+                        });
+                        worker.IsBackground = true; worker.Start();
+                    }
+                    if (ticks >= 5 && context.MenuPresenter.IsOpen) {
+                        stable = original != IntPtr.Zero && original == context.MenuPresenter.ActiveHandle && NativeMenuTests.IsMenu(original) && Object.ReferenceEquals(snapshot, context.MenuPresenter.ActiveSnapshot) && NativeMenuTests.PopupCount() >= 2;
+                    }
+                    if (ticks > 35 || workerError != null) { timer.Stop(); MenuNative.EndMenu(); }
+                };
+                timer.Start(); context.ShowMenu(new System.Drawing.Point(40, 40)); timer.Stop();
+            }
+            if (worker != null) worker.Join(1000);
+            if (workerError != null) throw new Exception("Native submenu UI Automation: " + workerError.Message);
+            Assert(stable, "minimized monitor and background refresh preserve native root and submenu");
             Assert(Interlocked.CompareExchange(ref hiddenReports, 0, 0) == 1, "minimize emits exactly one hidden notification");
-            runtime.GetType().GetField("Status").SetValue(runtime, "测试状态更新");
-            ManagerAction("RefreshMenu", null); Application.DoEvents();
-            Assert(menu.Visible && profile.DropDown.Visible, "background status refresh does not interrupt menu interaction");
-            menu.Close();
-            Wait(delegate { return !Object.ReferenceEquals(menu, ManagedIcon().ContextMenuStrip); }, "deferred menu refresh after normal close", 5);
-            ContextMenuStrip latest = ManagedIcon().ContextMenuStrip;
-            ToolStripMenuItem updated = latest.Items.OfType<ToolStripMenuItem>().First(item => item.Text.StartsWith(p.Name + " — "));
-            Assert(updated.Text.Contains("测试状态更新"), "closed menu applies the latest pending status");
-            updated.DropDownItems.OfType<ToolStripMenuItem>().First(item => item.Text == "停止监测").PerformClick();
+            Assert(fresh, "next native snapshot sees updated status while active snapshot stays frozen");
             Wait(delegate { return ManagedStatus(p) == "已停止" && File.Exists(Path.Combine(p.WorkingDirectory, "fixture.cleanup")); }, "tray stop remains usable after minimizing", 10);
-            Assert(true, "tray stop performs real Ctrl+C after minimize");
-        } finally {
-            client.Message -= count;
-            if (menu != null && !menu.IsDisposed) menu.Close();
-        }
+            Assert(File.ReadAllText(Path.Combine(p.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "native menu command performs real Ctrl+C after minimize");
+        } finally { client.Message -= count; }
     }
     private static void OpenManager(Settings settings, string suffix) {
         settings.Language = "zh-Hans";
@@ -99,13 +118,16 @@ internal static class Tests {
         info.UseShellExecute = false; info.CreateNoWindow = true;
         using (Process process = Process.Start(info)) { process.WaitForExit(); if (process.ExitCode != 0) throw new Exception("Fixture input failed: " + process.ExitCode); }
     }
-    [STAThread] public static int Main() {
+    [STAThread] public static int Main(string[] args) {
+        Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+        if (args.Length == 1 && args[0] == "--preview") return UiPreview.Run();
         IntPtr hook = IntPtr.Zero;
         try {
             root = Path.Combine(Path.GetDirectoryName(Files.Bin.TrimEnd(Path.DirectorySeparatorChar)), "artifacts", "tests", Guid.NewGuid().ToString("N"));
             Files.EnsurePrivateDirectory(root);
             Settings s = Settings.Defaults();
             Assert(File.Exists(s.ShellPath) && File.Exists(s.PythonPath), "dependencies discovered");
+            NativeMenuTests.Run();
             LocalizationTests.Run(root);
             StartupTests.Run(root);
             Assert(s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "default display policy");

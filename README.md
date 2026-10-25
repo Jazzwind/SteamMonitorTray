@@ -39,9 +39,11 @@ Open PowerShell in the project folder:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The build uses the .NET Framework C# compiler supplied with Windows. No .NET SDK or NuGet download is needed. Run `bin\SteamMonitorTray.exe` after building. Close the running tray application gracefully before rebuilding its executable.
+The build uses the .NET Framework C# compiler supplied with Windows. No .NET SDK or NuGet download is needed. Run `bin\SteamMonitorTray.exe` after building. Close the running tray application gracefully before rebuilding its executable. To build separately while the current version keeps running, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -OutputDirectory .\artifacts\preview\bin`.
 
 For a portable release, extract the ZIP and run `SteamMonitorTray.exe` directly. Python and the upstream monitor must still be installed separately.
+
+Keep `SteamMonitorTray.exe.config` beside the executable: it is the non-secret .NET runtime configuration that enables high DPI support, not your personal `settings.json`. When upgrading, quit the old tray app normally and replace all runtime files together. Existing settings, startup registration and monitoring data remain in their current locations.
 
 ### Add an existing monitoring profile
 
@@ -67,6 +69,14 @@ An optional command-line import is available while the app is not running:
 ```
 
 Add `-NoStartup` to import without registering Windows startup. The example path is fictional.
+
+## Native tray menu and display scaling
+
+Version 1.2.0 uses Windows-native popup menus, following the same Win32 approach as AKKO Link Monitor, with Per-Monitor V2 DPI awareness. Windows draws the menu font, spacing, checkmarks and disabled states. The tray icon keeps its colored status indicators; menu status is shown as text using system colors. The former menu hover hints are replaced by startup status text and operation notices.
+
+Each opening gets a fresh snapshot, including the current Task Manager startup approval. Background monitoring updates do not rebuild an open menu or its submenus. Existing commands, profile names and six interface languages are preserved, including Arabic right-to-left layout.
+
+High DPI features require a Windows version supporting Per-Monitor V2 (Windows 10 version 1703 or later, including Windows 11). See [verification notes](https://github.com/Jazzwind/SteamMonitorTray/blob/main/docs/VERIFICATION.md) for tested environments and outstanding manual checks.
 
 ## Tray and PowerShell windows
 
@@ -137,13 +147,15 @@ The size-limited `launcher.log` records random profile identifiers, states and e
 Run native integration tests from an ordinary interactive Windows desktop, not a console/pipe-restricted sandbox:
 
 ```powershell
-.\build.ps1 -Test
+.\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python -m unittest discover -s tests -p 'test_*.py'
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.1.0
+.\package.ps1 -Version 1.2.0
 ```
 
 Tests use local fake monitors and isolated configuration/startup metadata. They do not call Steam or Discord. Release ZIPs in `dist` use a strict runtime allowlist and include both language guides. Privacy scanning covers source, staged files, reachable Git history and release archives.
+
+Packaging builds into its own staging directory, so it does not overwrite a running copy in `bin`. A test-only interactive preview is available after building tests: `artifacts\native-menu\bin\SteamMonitorTray.Tests.exe --preview`. Its profile is disabled and startup registration is isolated; the preview closes automatically after three minutes.
 
 Real sign-out/sign-in startup behavior should also be checked manually. Tests never sign you out or restart your computer.
 
@@ -204,6 +216,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 使用系统自带的 .NET Framework C# 编译器，无需安装 .NET SDK 或下载 NuGet 依赖。程序位于 `bin\SteamMonitorTray.exe`。
 
+覆盖原位置的 EXE 前，请从托盘正常退出旧版。也可以在旧版继续监测时独立构建：`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -OutputDirectory .\artifacts\preview\bin`。
+
+便携包中的 `SteamMonitorTray.exe.config` 必须与 EXE 放在一起；它是启用高 DPI 的 .NET 运行配置，不是私人 `settings.json`。升级时将整套运行文件一起更新，原有设置、启动项和监测数据继续保留在原位置。
+
 ### 选择已有配置
 
 双击程序，首次启动时打开设置。如果左侧列表为空，先点击 **“添加已有配置…”**，选择你原来保存 `steam_monitor.conf` 的文件夹，不是托盘程序源码或 EXE 所在的文件夹。程序会自动填写配置、同目录的 `.env` 和已安装的 `steam_monitor.exe`。
@@ -238,6 +254,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
 从便携发布包使用时，程序就在解压目录，直接运行 `SteamMonitorTray.exe`；无需构建。
+
+## 原生托盘菜单与显示缩放
+
+1.2.0 使用 Windows 原生弹出菜单，参考 AKKO Link Monitor 的 Win32 菜单机制，并启用 Per-Monitor V2 DPI 感知。菜单字体、间距、勾选和禁用状态由 Windows 绘制。托盘图标继续用颜色表示状态，菜单状态使用系统颜色和文字；原来的菜单悬停说明改由自启动状态文字及操作提示承载。
+
+每次打开菜单时生成最新快照，包括任务管理器中的启动批准状态。菜单及子菜单展开期间，后台监测更新不会重建它们。现有功能、配置别名与六种语言均保留，包括阿拉伯语从右向左布局。
+
+高 DPI 功能需要支持 Per-Monitor V2 的 Windows（Windows 10 1703 或更新版本，包括 Windows 11）。已验证环境和仍需人工确认的项目见[验证记录](https://github.com/Jazzwind/SteamMonitorTray/blob/main/docs/VERIFICATION.md)。
 
 ## 托盘和窗口
 
@@ -350,14 +374,16 @@ GitHub 首页将英文放在最前面并默认展开。点击顶部 **简体中�
 在普通交互式 Windows 会话中运行，不要在限制控制台/命名管道的沙箱内执行集成测试：
 
 ```powershell
-.\build.ps1 -Test
+.\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python .\scripts\ScanPrivacy.py
-.\package.ps1
+.\package.ps1 -Version 1.2.0
 ```
 
 测试只运行本地 FakeMonitor，不使用真实配置，不连接 Steam 或 Discord。覆盖隐藏启动、真实 Ctrl+C 清理、实例隔离、输入保留、原生提示符、手动启停同步、输出冲突、管理器重试上限和正常退出。测试产物位于已忽略的 `artifacts` 中。
 
 发布 ZIP 位于 `dist`。这是便携运行包，Python 和 `steam_monitor` 需由使用者自行安装。构建脚本兼容 Windows PowerShell 5.1；复制到发布目录的会话脚本使用 UTF-8 BOM，避免中文乱码。
+
+打包在独立暂存目录构建，不覆盖正在运行的 `bin`。编译测试后，可运行 `artifacts\native-menu\bin\SteamMonitorTray.Tests.exe --preview` 打开本地交互预览。预览配置禁用监测、自启动注册使用隔离位置，三分钟后自动正常关闭。
 
 维护英文文档时，以 `README.en.md` 为英文正文来源，修改后运行 `python scripts\SyncReadmeEnglish.py` 同步首页英文区。同步时仅将“简体中文”链接改为页内切换，其余英文内容保持一致。`README.en.md` 同时作为便携包中的独立英文说明；首页仅提供页内语言切换入口。
 

@@ -12,13 +12,9 @@ using SteamMonitorTray;
 internal static class StartupTests {
     private static void Assert(bool condition, string label) { if (!condition) throw new Exception(label); Console.WriteLine("PASS " + label); }
     private static byte[] Approval(uint code) { byte[] bytes = new byte[12]; Array.Copy(BitConverter.GetBytes(code), bytes, 4); return bytes; }
-    private static ContextMenuStrip Menu(TrayContext context) { return ((NotifyIcon)typeof(TrayContext).GetField("icon", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(context)).ContextMenuStrip; }
-    private static ToolStripMenuItem Toggle(TrayContext context) { return Menu(context).Items.OfType<ToolStripMenuItem>().First(item => item.Name == "StartupToggle"); }
-    private static void OpenMenu(TrayContext context) {
-        // Exercise the Opening callback without opening a popup or stealing keyboard focus.
-        MethodInfo opening = typeof(ToolStripDropDown).GetMethod("OnOpening", BindingFlags.NonPublic | BindingFlags.Instance);
-        opening.Invoke(Menu(context), new object[] { new CancelEventArgs() });
-    }
+    private static MenuSnapshot Menu(TrayContext context) { return context.CreateMenuSnapshot(); }
+    private static MenuEntry Toggle(TrayContext context) { return Menu(context).Items.First(item => item.Key == "StartupToggle"); }
+    private static void OpenMenu(TrayContext context) { context.CreateMenuSnapshot(); }
     public static void Run(string root) {
         const string prefix = @"Software\SteamMonitorTray\Tests\";
         string testKey = prefix + Guid.NewGuid().ToString("N");
@@ -38,13 +34,13 @@ internal static class StartupTests {
                 Settings settings = Settings.Defaults(); settings.Language = "zh-Hans"; settings.Profiles.Add(new Profile { Name = "startup fixture", Enabled = false });
                 context = new TrayContext(settings, true, Path.Combine(folder, "settings"), registration);
                 Application.DoEvents();
-                string[] order = Menu(context).Items.OfType<ToolStripMenuItem>().Where(item => !String.IsNullOrEmpty(item.Name)).Select(item => item.Name).ToArray();
+                string[] order = Menu(context).Items.Where(item => new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay", "Language" }.Contains(item.Key)).Select(item => item.Key).ToArray();
                 Assert(order.SequenceEqual(new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay", "Language" }), "requested tray settings/startup/display/language order");
                 Assert(Toggle(context).Checked && Toggle(context).Text.Contains("任务管理器已禁用"), "registered disabled startup stays checked with a warning");
-                Toggle(context).PerformClick();
+                Toggle(context).Invoke();
                 Assert(!registration.Read().Registered && !Toggle(context).Checked && Toggle(context).Text.Contains("未注册"), "startup checkbox removes its own shortcut");
                 Assert(((byte[])key.GetValue("SteamMonitorTray.lnk"))[0] == 3 && ((byte[])key.GetValue("OtherApp.lnk"))[0] == 7, "unchecking preserves approval records and other entries");
-                Toggle(context).PerformClick();
+                Toggle(context).Invoke();
                 Assert(Toggle(context).Checked && Toggle(context).Text.Contains("任务管理器已禁用"), "rechecking cannot bypass task manager disable");
                 key.SetValue("SteamMonitorTray.lnk", Approval(2), RegistryValueKind.Binary);
                 OpenMenu(context);

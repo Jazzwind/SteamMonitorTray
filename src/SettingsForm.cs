@@ -14,7 +14,7 @@ namespace SteamMonitorTray {
             int width = proposedSize.Width;
             if (width <= 1 || width > 10000) width = Width > 1 ? Width : 500;
             Size measured = TextRenderer.MeasureText(Text, Font, new Size(width, Int32.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.TextBoxControl);
-            return new Size(width, measured.Height + Padding.Vertical + 2);
+            return new Size(width, measured.Height + Padding.Vertical + LogicalToDeviceUnits(2));
         }
     }
     // Settings guidance is displayed alongside each field.
@@ -89,11 +89,20 @@ namespace SteamMonitorTray {
             editor.Controls.Add(note, 0, 12); editor.SetColumnSpan(note, 3);
             scroll.Controls.Add(editor); profiles.Controls.Add(scroll, 1, 0); root.Controls.Add(profiles, 0, 2);
             FlowLayoutPanel footer = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Margin = new Padding(3, 12, 3, 3) };
-            Button save = new Button { Text = "保存", Width = 90 }, cancel = new Button { Text = "取消", DialogResult = DialogResult.Cancel, Width = 90 };
+            Button save = new Button { Text = "保存", AutoSize = true, MinimumSize = new Size(90, 0) }, cancel = new Button { Text = "取消", DialogResult = DialogResult.Cancel, AutoSize = true, MinimumSize = new Size(90, 0) };
             save.Click += delegate { Save(); }; footer.Controls.Add(save); footer.Controls.Add(cancel); root.Controls.Add(footer, 0, 3); CancelButton = cancel;
             RebuildList();
             CaptureText(this); L.LanguageChanged += ApplyLanguage; ApplyLanguage();
-            Shown += delegate { Rectangle area = Screen.FromControl(this).WorkingArea; if (Height > area.Height) Height = area.Height; if (Width > area.Width) Width = area.Width; };
+            Shown += delegate { FitWorkingArea(); };
+        }
+        private void FitWorkingArea() {
+            Rectangle area = Screen.FromControl(this).WorkingArea;
+            MinimumSize = new Size(Math.Min(MinimumSize.Width, area.Width), Math.Min(MinimumSize.Height, area.Height));
+            Size = new Size(Math.Min(Width, area.Width), Math.Min(Height, area.Height));
+        }
+        protected override void OnDpiChanged(DpiChangedEventArgs e) {
+            base.OnDpiChanged(e);
+            if (IsHandleCreated && !IsDisposed) BeginInvoke((Action)FitWorkingArea);
         }
         private void CaptureText(Control control) {
             if (!(control is TextBox) && !(control is ListBox) && !(control is ComboBox) && control != instructions && !String.IsNullOrEmpty(control.Text)) textKeys[control] = control.Text;
