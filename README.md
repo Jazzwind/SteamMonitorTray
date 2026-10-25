@@ -7,9 +7,9 @@
 <!-- ENGLISH_GUIDE_START -->
 <div align="center">
   <h1>SteamMonitorTray</h1>
+  <h3><strong>English</strong> · <a href="#user-content-chinese">简体中文</a></h3>
   <p><strong>A Windows tray companion built for <a href="https://github.com/misiektoja/steam_monitor">misiektoja/steam_monitor</a>.</strong></p>
   <p>Native PowerShell · Multiple profiles · Windows startup · Six interface languages</p>
-  <p><strong>English</strong> · <a href="#user-content-chinese">简体中文</a></p>
 </div>
 
 SteamMonitorTray manages real PowerShell sessions around the existing `steam_monitor` command. Hide a window without interrupting monitoring, restore the same output later, and stop gracefully from the tray.
@@ -147,7 +147,7 @@ Tests use local fake monitors and isolated configuration/startup metadata. They 
 
 Real sign-out/sign-in startup behavior should also be checked manually. Tests never sign you out or restart your computer.
 
-The repository homepage displays English first and expands it by default. Select **简体中文** at the top to read Chinese on the same page; select **English** to return. The code listing stays on the repository homepage. This uses native exclusive disclosure sections in modern browsers. Reloading does not preserve the selected language. If a language link does not respond after a reload, use the disclosure arrow beside the language heading to expand it directly. Older browsers can expand or collapse each language manually.
+The repository homepage displays English first and expands it by default. Select **简体中文** at the top to read Chinese on the same page; select **English** to return. The code listing stays on the repository homepage. This uses native exclusive disclosure sections in modern browsers. Reloading does not preserve the selected language. If the Chinese link does not respond after a reload, click the prominent **简体中文 · 点击展开中文说明** heading directly; the entire heading is clickable. Language headings can also be clicked to expand or collapse each guide manually.
 
 For documentation updates, edit this file as the English source, then run `python scripts\SyncReadmeEnglish.py` to update the homepage's English section. The script changes only the Chinese navigation link to an in-page target; all other English content stays identical. This standalone file is also included in the portable package; the homepage offers only in-page language links.
 
@@ -161,14 +161,14 @@ Please consider starring [steam_monitor](https://github.com/misiektoja/steam_mon
 </details>
 
 <details name="readme-language">
-<summary><strong>简体中文</strong></summary>
+<summary><h2>简体中文 · 点击展开中文说明</h2></summary>
 
 <a name="chinese"></a>
 <div align="center">
   <h1>SteamMonitorTray</h1>
+  <h3><a href="#user-content-english">English</a> · <strong>简体中文</strong></h3>
   <p><strong>基于 <a href="https://github.com/misiektoja/steam_monitor">misiektoja/steam_monitor</a> 的 Windows 托盘管理器</strong></p>
   <p>原生 PowerShell · 多账号配置 · 开机自启动 · 六种界面语言</p>
-  <p><a href="#user-content-english">English</a> · <strong>简体中文</strong></p>
 </div>
 
 为 [steam_monitor](https://github.com/misiektoja/steam_monitor) 提供 Windows 托盘、原生 PowerShell 窗口、多配置管理和登录自启动。
@@ -278,7 +278,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 用户填写的配置名称和路径保持原样。原版 steam_monitor 的监测输出、Windows 文件选择对话框有各自的语言行为；新建会话中的本程序引导提示使用所选语言。翻译资源直接内置，不调用在线翻译服务。
 
-GitHub 首页将英文放在最前面并默认展开。点击顶部 **简体中文**，可在当前页面阅读中文；点击 **English** 可以切回，仓库上方的代码列表保持不变。浏览器需支持原生互斥折叠。刷新不会保存所选语言；若刷新后语言链接没有反应，可通过对应语言标题旁的三角箭头直接展开。较旧浏览器也可通过三角箭头手动展开或收起。
+GitHub 首页将英文放在最前面并默认展开。点击顶部 **简体中文**，可在当前页面阅读中文；点击 **English** 可以切回，仓库上方的代码列表保持不变。浏览器需支持原生互斥折叠。刷新不会保存所选语言；若刷新后中文链接没有反应，可直接点击放大的 **简体中文 · 点击展开中文说明** 标题展开中文，整行标题均可点击。其他语言标题也可直接点击展开或收起。
 
 ## 登录自启动与任务管理器
 
