@@ -27,7 +27,22 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 ### 选择已有配置
 
-双击程序，首次启动时打开设置。添加现有配置目录，核对监测程序、工作目录、配置文件与环境文件路径，然后保存。
+双击程序，首次启动时打开设置。如果左侧列表为空，先点击 **“添加已有配置…”**，选择你原来保存 `steam_monitor.conf` 的文件夹，不是托盘程序源码或 EXE 所在的文件夹。程序会自动填写配置、同目录的 `.env` 和已安装的 `steam_monitor.exe`。
+
+选择左侧刚添加的配置，按下表核对。顶部 PowerShell 和 Python 如果已识别正确，通常无需修改。
+
+| 设置项 | 含义和填写方式 |
+| --- | --- |
+| 配置名称 | 托盘中显示的名称，例如“主要账号”。随便命名，不用填写 SteamID。 |
+| 工作目录 | 监测运行时使用的文件夹。通常是原来保存 `steam_monitor.conf` 的目录。 |
+| 配置文件（.conf） | 选择原有 `steam_monitor.conf`，其中保存默认监测目标、通知开关等设置。 |
+| 密钥文件（.env） | 通常选择同目录的 `.env`，其中保存 Steam API key、Discord webhook 等密钥。已有这个文件时请选中它；只有已另行设置环境变量时才留空。 |
+| 监测程序（exe） | 已安装的 `steam_monitor.exe`。不要选 `SteamMonitorTray.exe`、PowerShell 或 Python。通常会自动找到。 |
+| 打开托盘程序后，自动开始监测此账号 | 建议勾选。表示每次打开托盘程序时自动监测这份配置；登录 Windows 时是否打开程序，由自启动项另行控制。 |
+
+核对后点击 **保存**。首次配置保存后会启动已勾选的监测；以后打开程序也会自动启动这些配置。已有配置时，从左侧选中后即可查看，不需要重复添加。
+
+如果没有自动找到监测程序，在 PowerShell 中执行 `Get-Command steam_monitor | Select-Object -ExpandProperty Path`，把显示的完整程序路径填入“监测程序（exe）”。API key、webhook 和 SteamID 不需要直接填写在这个设置窗口中。
 
 也可以在程序尚未运行时导入目录并注册自启动：
 
