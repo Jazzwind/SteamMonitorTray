@@ -99,7 +99,8 @@ namespace SteamMonitorTray {
                     powerShell = Process.Start(info);
                     Thread controlThread = new Thread(ReadController); controlThread.IsBackground = true; controlThread.Start();
                     minimizeTimer = new Timer(delegate {
-                        if (Native.IsIconic(window)) { Native.ShowWindow(window, 0); Send(new Wire("Hidden", "")); }
+                        // A hidden console may remain iconic. Hide/report only a visible minimized window.
+                        if (Native.IsWindowVisible(window) && Native.IsIconic(window)) { Native.ShowWindow(window, 0); Send(new Wire("Hidden", "")); }
                     }, null, 100, 100);
                     powerShell.WaitForExit();
                     Send(new Wire("SessionEnded", exiting ? "Requested" : "UserExit") { Code = powerShell.ExitCode });

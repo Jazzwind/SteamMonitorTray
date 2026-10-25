@@ -75,6 +75,7 @@ namespace SteamMonitorTray {
         private readonly Dictionary<string, Runtime> runtimes = new Dictionary<string, Runtime>();
         private readonly System.Windows.Forms.Timer timer;
         private bool quitting;
+        private bool menuRefreshPending;
         private static Icon StatusIcon(Color color, string state) {
             using (Bitmap bitmap = new Bitmap(32, 32)) {
                 using (Graphics g = Graphics.FromImage(bitmap)) {
@@ -149,6 +150,8 @@ namespace SteamMonitorTray {
         }
         private void Receive(Runtime r, Wire message) {
             switch (message.Kind) {
+                // Visibility acknowledgements do not change any monitoring menu state.
+                case "Hidden": case "Visible": return;
                 case "Welcome": if (settings.ShowOnLaunch(startup)) r.Client.Send("Show"); break;
                 case "Prompt": r.Prompt = true; TryStart(r); break;
                 case "ShellBusy": r.Prompt = false; break;
@@ -212,9 +215,23 @@ namespace SteamMonitorTray {
         }
         private ToolStripMenuItem Item(string text, Action action) { ToolStripMenuItem item = new ToolStripMenuItem(text); item.Click += delegate { action(); }; return item; }
         private void RefreshMenu() {
-            if (icon == null) return;
-            ContextMenuStrip menu = new ContextMenuStrip();
+            if (icon == null || dispatcher.IsDisposed) return;
             int running = runtimes.Values.Count(r => r.Running), total = settings.Profiles.Count(p => p.Enabled);
+            bool fault = runtimes.Values.Any(r => r.Status.Contains("异常") || r.Status.Contains("等待"));
+            Icon nextIcon = fault ? warningIcon : (running > 0 ? runningIcon : stoppedIcon);
+            string nextText = "SteamMonitorTray — 运行 " + running + "/" + total + (fault ? "（需关注）" : "");
+            if (icon.Icon != nextIcon) icon.Icon = nextIcon;
+            if (icon.Text != nextText) icon.Text = nextText;
+            ContextMenuStrip old = icon.ContextMenuStrip;
+            // Keep both the active menu and its submenus alive until the user's interaction ends.
+            if (old != null && old.Visible) { menuRefreshPending = true; return; }
+            menuRefreshPending = false;
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.Closed += delegate {
+                if (menuRefreshPending && !dispatcher.IsDisposed) dispatcher.BeginInvoke((Action)delegate {
+                    if (menuRefreshPending && !dispatcher.IsDisposed) RefreshMenu();
+                });
+            };
             menu.Items.Add(new ToolStripMenuItem("监测进程运行 " + running + "/" + total) { Enabled = false });
             menu.Items.Add(Item("全部启动", delegate { foreach (Runtime r in runtimes.Values) if (r.Profile.Enabled) Start(r, true); }));
             menu.Items.Add(Item("全部停止", delegate { foreach (Runtime r in runtimes.Values) Stop(r); }));
@@ -241,12 +258,7 @@ namespace SteamMonitorTray {
             menu.Items.Add(Item("注册登录自启动", delegate { try { Startup.Install(); Notice("启动项已注册。可以在任务管理器中启用或禁用。"); } catch (Exception ex) { Notice(Program.SafeError(ex)); } }));
             menu.Items.Add(Item("移除登录自启动", delegate { try { Startup.Remove(); Notice("已移除本工具的启动项。"); } catch (Exception ex) { Notice(Program.SafeError(ex)); } }));
             menu.Items.Add(new ToolStripSeparator()); menu.Items.Add(Item("退出程序（先发送 Ctrl+C）", Quit));
-            bool fault = runtimes.Values.Any(r => r.Status.Contains("异常") || r.Status.Contains("等待"));
-            icon.Icon = fault ? warningIcon : (running > 0 ? runningIcon : stoppedIcon);
-            icon.Text = "SteamMonitorTray — 运行 " + running + "/" + total + (fault ? "（需关注）" : "");
-            ContextMenuStrip old = icon.ContextMenuStrip;
             // Do not dispose a menu while one of its click handlers is executing.
-            if (old != null && old.Visible) old.Close();
             icon.ContextMenuStrip = menu;
             if (old != null) dispatcher.BeginInvoke((Action)delegate { old.Dispose(); });
         }

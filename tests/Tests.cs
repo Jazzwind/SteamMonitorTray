@@ -24,6 +24,49 @@ internal static class Tests {
         managerType.GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance).Invoke(manager, argument == null ? null : new object[] { argument });
     }
     private static bool ManagerAlive(Profile p) { object r = ManagedRuntime(p); return (bool)r.GetType().GetProperty("Alive").GetValue(r, null); }
+    private static bool AnyManagerAlive() {
+        if (manager == null) return false;
+        IDictionary all = (IDictionary)managerType.GetField("runtimes", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(manager);
+        foreach (object runtime in all.Values) if ((bool)runtime.GetType().GetProperty("Alive").GetValue(runtime, null)) return true;
+        return false;
+    }
+    private static NotifyIcon ManagedIcon() { return (NotifyIcon)managerType.GetField("icon", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(manager); }
+    private static void CheckMinimizedTrayMenu(Profile p) {
+        object runtime = ManagedRuntime(p);
+        SessionClient client = (SessionClient)runtime.GetType().GetField("Client").GetValue(runtime);
+        int hiddenReports = 0;
+        Action<Wire> count = delegate(Wire message) { if (message.Kind == "Hidden") Interlocked.Increment(ref hiddenReports); };
+        client.Message += count;
+        ContextMenuStrip menu = null;
+        try {
+            client.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(client.Window); }, "show fixture before minimize", 5);
+            Native.ShowWindow(client.Window, 7); // SW_SHOWMINNOACTIVE: do not steal the user's keyboard focus.
+            Wait(delegate { return !Native.IsWindowVisible(client.Window); }, "minimize fixture into tray", 5);
+            menu = ManagedIcon().ContextMenuStrip; menu.AutoClose = false;
+            // AutoClose=false isolates application-triggered closure from unrelated user desktop input.
+            menu.Show(new System.Drawing.Point(20, 20));
+            ToolStripMenuItem profile = menu.Items.OfType<ToolStripMenuItem>().First(item => item.Text.StartsWith(p.Name + " — "));
+            profile.DropDown.AutoClose = false; profile.ShowDropDown();
+            Stopwatch opened = Stopwatch.StartNew();
+            while (opened.Elapsed.TotalMilliseconds < 800) { Application.DoEvents(); Thread.Sleep(20); }
+            Assert(menu.Visible && profile.DropDown.Visible && Object.ReferenceEquals(menu, ManagedIcon().ContextMenuStrip), "minimized monitor preserves open tray menu and submenu");
+            Assert(Interlocked.CompareExchange(ref hiddenReports, 0, 0) == 1, "minimize emits exactly one hidden notification");
+            runtime.GetType().GetField("Status").SetValue(runtime, "测试状态更新");
+            ManagerAction("RefreshMenu", null); Application.DoEvents();
+            Assert(menu.Visible && profile.DropDown.Visible, "background status refresh does not interrupt menu interaction");
+            menu.Close();
+            Wait(delegate { return !Object.ReferenceEquals(menu, ManagedIcon().ContextMenuStrip); }, "deferred menu refresh after normal close", 5);
+            ContextMenuStrip latest = ManagedIcon().ContextMenuStrip;
+            ToolStripMenuItem updated = latest.Items.OfType<ToolStripMenuItem>().First(item => item.Text.StartsWith(p.Name + " — "));
+            Assert(updated.Text.Contains("测试状态更新"), "closed menu applies the latest pending status");
+            updated.DropDownItems.OfType<ToolStripMenuItem>().First(item => item.Text == "停止监测").PerformClick();
+            Wait(delegate { return ManagedStatus(p) == "已停止" && File.Exists(Path.Combine(p.WorkingDirectory, "fixture.cleanup")); }, "tray stop remains usable after minimizing", 10);
+            Assert(true, "tray stop performs real Ctrl+C after minimize");
+        } finally {
+            client.Message -= count;
+            if (menu != null && !menu.IsDisposed) menu.Close();
+        }
+    }
     private static void OpenManager(Settings settings, string suffix) {
         Assembly app = Assembly.LoadFrom(Path.Combine(Files.Bin, "SteamMonitorTray.exe")); managerType = app.GetType("SteamMonitorTray.TrayContext");
         manager = Activator.CreateInstance(managerType, new object[] { settings, true, Path.Combine(root, suffix) });
@@ -124,8 +167,7 @@ internal static class Tests {
             Profile broken = Fixture("broken-manager", false); broken.ConfigFile += ".missing"; managed.Profiles.Add(broken); OpenManager(managed, "stop-manager-data");
             Wait(delegate { return ManagedStatus(stopFixture) == "监测进程运行" && File.Exists(Path.Combine(stopFixture.WorkingDirectory, "fixture.starts")); }, "tray manager starts monitor", 10);
             Assert(ManagedStatus(broken) == "异常", "invalid profile does not block another valid profile");
-            ManagerAction("Stop", ManagedRuntime(stopFixture));
-            Wait(delegate { return ManagedStatus(stopFixture) == "已停止" && File.Exists(Path.Combine(stopFixture.WorkingDirectory, "fixture.cleanup")); }, "tray manager graceful stop", 10);
+            CheckMinimizedTrayMenu(stopFixture);
             Stopwatch quiet = Stopwatch.StartNew(); while (quiet.Elapsed.TotalSeconds < 2) { Application.DoEvents(); Thread.Sleep(20); }
             Assert(File.ReadAllLines(Path.Combine(stopFixture.WorkingDirectory, "fixture.starts")).Length == 1, "manual stop cancels automatic restart");
             ManagerAction("Quit", null); Wait(delegate { return !ManagerAlive(stopFixture); }, "stopped manager exits", 10); Application.DoEvents(); manager = null;
@@ -138,7 +180,7 @@ internal static class Tests {
                 if (c.Alive) { c.Send("Stop"); Thread.Sleep(500); c.Send("Exit"); }
                 // On failure, keep the authenticated connection alive long enough for graceful exit.
             }
-            Stopwatch wait = Stopwatch.StartNew(); while (clients.Any(c => c.Alive) && wait.Elapsed.TotalSeconds < 8) { Application.DoEvents(); Thread.Sleep(50); }
+            Stopwatch wait = Stopwatch.StartNew(); while ((clients.Any(c => c.Alive) || AnyManagerAlive()) && wait.Elapsed.TotalSeconds < 8) { Application.DoEvents(); Thread.Sleep(50); }
             foreach (SessionClient c in clients) c.Dispose();
         }
     }
