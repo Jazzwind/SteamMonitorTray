@@ -4,9 +4,10 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SteamMonitorTray.Tests")]
 
 namespace SteamMonitorTray {
     internal static class Program {
@@ -39,23 +40,6 @@ namespace SteamMonitorTray {
             return ex.GetType().Name + "。请检查路径、权限和程序依赖。";
         }
     }
-    internal static class Startup {
-        public static string Shortcut { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SteamMonitorTray.lnk"); } }
-        public static void Install() {
-            // Do not touch StartupApproved. In particular, reinstalling does not re-enable a disabled item.
-            Type type = Type.GetTypeFromProgID("WScript.Shell");
-            object shell = Activator.CreateInstance(type), shortcut = null;
-            try {
-                shortcut = type.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, shell, new object[] { Shortcut });
-                Type linkType = shortcut.GetType();
-                Action<string, object> set = delegate(string name, object value) { linkType.InvokeMember(name, System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[] { value }); };
-                set("TargetPath", Path.Combine(Files.Bin, "SteamMonitorTray.exe")); set("Arguments", "--startup");
-                set("WorkingDirectory", Files.Bin); set("Description", "SteamMonitorTray"); set("IconLocation", Path.Combine(Files.Bin, "SteamMonitorTray.exe") + ",0");
-                linkType.InvokeMember("Save", System.Reflection.BindingFlags.InvokeMethod, null, shortcut, null);
-            } finally { if (shortcut != null) Marshal.FinalReleaseComObject(shortcut); Marshal.FinalReleaseComObject(shell); }
-        }
-        public static void Remove() { if (File.Exists(Shortcut)) File.Delete(Shortcut); }
-    }
     internal sealed class Runtime {
         public Profile Profile;
         public SessionClient Client;
@@ -69,6 +53,7 @@ namespace SteamMonitorTray {
         private Settings settings;
         private readonly string dataRoot;
         private readonly bool startup;
+        private readonly StartupRegistration startupRegistration;
         private readonly NotifyIcon icon;
         private readonly Icon runningIcon = StatusIcon(Color.FromArgb(34, 160, 85), "play"), stoppedIcon = StatusIcon(Color.SlateGray, "stop"), warningIcon = StatusIcon(Color.DarkOrange, "warning");
         private readonly Control dispatcher = new Control();
@@ -89,8 +74,10 @@ namespace SteamMonitorTray {
                 try { return (Icon)Icon.FromHandle(native).Clone(); } finally { Native.DestroyIcon(native); }
             }
         }
-        public TrayContext(Settings initial, bool isStartup, string localDataRoot) {
+        public TrayContext(Settings initial, bool isStartup, string localDataRoot) : this(initial, isStartup, localDataRoot, Startup.Registration) { }
+        internal TrayContext(Settings initial, bool isStartup, string localDataRoot, StartupRegistration registration) {
             settings = initial; startup = isStartup; dataRoot = localDataRoot;
+            startupRegistration = registration;
             IntPtr handle = dispatcher.Handle;
             icon = new NotifyIcon { Icon = SystemIcons.Application, Text = "SteamMonitorTray", Visible = true };
             icon.MouseDoubleClick += delegate { ShowAll(); };
@@ -205,6 +192,20 @@ namespace SteamMonitorTray {
         }
         private void ShowAll() { foreach (Runtime r in runtimes.Values) if (r.Alive) r.Client.Send("Show"); }
         private void SaveSettings() { Json.Save(Path.Combine(dataRoot, "settings.json"), settings); }
+        private void UpdateStartupItem(ToolStripMenuItem item) {
+            StartupState state = startupRegistration.Read();
+            item.Checked = state.Registered; item.Text = state.MenuText; item.ToolTipText = state.Description;
+            item.ForeColor = state.HasWarning ? Color.DarkOrange : SystemColors.ControlText;
+        }
+        private void ToggleStartup() {
+            try {
+                bool enable = !startupRegistration.Read().Registered;
+                startupRegistration.SetRegistered(enable);
+                StartupState state = startupRegistration.Read();
+                RefreshMenu();
+                if (enable && state.HasWarning) Notice(state.Description);
+            } catch (Exception ex) { Notice(Program.SafeError(ex)); }
+        }
         private void Quit() { quitting = true; foreach (Runtime r in runtimes.Values) Stop(r); }
         private void EditSettings() {
             using (SettingsForm form = new SettingsForm(settings, runtimes.Values.Any(r => r.Alive))) {
@@ -226,7 +227,7 @@ namespace SteamMonitorTray {
             // Keep both the active menu and its submenus alive until the user's interaction ends.
             if (old != null && old.Visible) { menuRefreshPending = true; return; }
             menuRefreshPending = false;
-            ContextMenuStrip menu = new ContextMenuStrip();
+            ContextMenuStrip menu = new ContextMenuStrip { ShowCheckMargin = true, ShowImageMargin = false, ShowItemToolTips = true };
             menu.Closed += delegate {
                 if (menuRefreshPending && !dispatcher.IsDisposed) dispatcher.BeginInvoke((Action)delegate {
                     if (menuRefreshPending && !dispatcher.IsDisposed) RefreshMenu();
@@ -247,16 +248,20 @@ namespace SteamMonitorTray {
                 menu.Items.Add(profile);
             }
             menu.Items.Add(new ToolStripSeparator());
-            ToolStripMenuItem modes = new ToolStripMenuItem("启动显示方式");
-            string[] keys = { "ManualWindowStartupTray", "AlwaysTray", "AlwaysWindow" }, labels = { "手动显示，自动进托盘", "两种启动都进托盘", "两种启动都显示窗口" };
+            ToolStripMenuItem settingsItem = Item("设置与多配置管理…", EditSettings); settingsItem.Name = "Settings"; menu.Items.Add(settingsItem);
+            ToolStripMenuItem localSettingsItem = Item("打开本地设置目录", delegate { Process.Start("explorer.exe", Native.Quote(Files.DataRoot)); }); localSettingsItem.Name = "LocalSettings"; menu.Items.Add(localSettingsItem);
+            ToolStripMenuItem startupItem = Item("开机自启动", ToggleStartup); startupItem.Name = "StartupToggle";
+            UpdateStartupItem(startupItem); menu.Items.Add(startupItem);
+            // Read the actual shortcut and Windows approval again on every opening, including external Task Manager changes.
+            menu.Opening += delegate { UpdateStartupItem(startupItem); };
+            ToolStripMenuItem modes = new ToolStripMenuItem("启动时隐藏窗口");
+            modes.Name = "LaunchDisplay";
+            string[] keys = { "AlwaysWindow", "ManualWindowStartupTray", "AlwaysTray" }, labels = { "不隐藏", "仅开机自启动时隐藏", "每次启动时隐藏" };
             for (int i = 0; i < keys.Length; i++) {
                 string key = keys[i]; ToolStripMenuItem item = Item(labels[i], delegate { settings.LaunchMode = key; SaveSettings(); RefreshMenu(); });
                 item.Checked = settings.LaunchMode == key; modes.DropDownItems.Add(item);
             }
-            menu.Items.Add(modes); menu.Items.Add(Item("设置与多配置管理…", EditSettings));
-            menu.Items.Add(Item("打开本地设置目录", delegate { Process.Start("explorer.exe", Native.Quote(Files.DataRoot)); }));
-            menu.Items.Add(Item("注册登录自启动", delegate { try { Startup.Install(); Notice("启动项已注册。可以在任务管理器中启用或禁用。"); } catch (Exception ex) { Notice(Program.SafeError(ex)); } }));
-            menu.Items.Add(Item("移除登录自启动", delegate { try { Startup.Remove(); Notice("已移除本工具的启动项。"); } catch (Exception ex) { Notice(Program.SafeError(ex)); } }));
+            menu.Items.Add(modes);
             menu.Items.Add(new ToolStripSeparator()); menu.Items.Add(Item("退出程序（先发送 Ctrl+C）", Quit));
             // Do not dispose a menu while one of its click handlers is executing.
             icon.ContextMenuStrip = menu;

@@ -105,6 +105,7 @@ internal static class Tests {
             Files.EnsurePrivateDirectory(root);
             Settings s = Settings.Defaults();
             Assert(File.Exists(s.ShellPath) && File.Exists(s.PythonPath), "dependencies discovered");
+            StartupTests.Run(root);
             Assert(s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "default display policy");
             s.LaunchMode = "AlwaysTray"; Assert(!s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "always tray policy");
             s.LaunchMode = "AlwaysWindow"; Assert(s.ShowOnLaunch(false) && s.ShowOnLaunch(true), "always window policy");

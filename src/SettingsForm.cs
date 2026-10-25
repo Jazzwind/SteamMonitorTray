@@ -42,9 +42,10 @@ namespace SteamMonitorTray {
             TableLayoutPanel global = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3, RowCount = 5 };
             for (int i = 0; i < 5; i++) global.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             global.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130)); global.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); global.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
-            mode.Items.AddRange(new object[] { "手动显示，自动进托盘", "两种启动都进托盘", "两种启动都显示窗口" });
-            mode.SelectedIndex = draft.LaunchMode == "AlwaysTray" ? 1 : (draft.LaunchMode == "AlwaysWindow" ? 2 : 0);
-            mode.Dock = DockStyle.Fill; global.Controls.Add(new Label { Text = "启动显示方式", AutoSize = true }, 0, 0); global.Controls.Add(mode, 1, 0);
+            mode.Items.AddRange(new object[] { "不隐藏", "仅开机自启动时隐藏", "每次启动时隐藏" });
+            mode.SelectedIndex = draft.LaunchMode == "AlwaysWindow" ? 0 : (draft.LaunchMode == "AlwaysTray" ? 2 : 1);
+            mode.Dock = DockStyle.Fill; global.Controls.Add(new Label { Text = "启动时隐藏窗口", AutoSize = true }, 0, 0); global.Controls.Add(mode, 1, 0);
+            tips.SetToolTip(mode, "控制程序刚启动时是否显示 PowerShell 窗口；隐藏时只显示托盘图标。之后仍可从托盘显示或隐藏窗口。");
             AddGlobal(global, "PowerShell", shell, draft.ShellPath, 1); AddGlobal(global, "Python", python, draft.PythonPath, 2);
             restart.Checked = draft.AutomaticRestart; global.Controls.Add(restart, 1, 3); root.Controls.Add(global, 0, 0);
             global.SetColumnSpan(restart, 2);
@@ -132,7 +133,7 @@ namespace SteamMonitorTray {
         protected override void Dispose(bool disposing) { if (disposing) tips.Dispose(); base.Dispose(disposing); }
         private void Save() {
             CommitProfile(); draft.ShellPath = shell.Text.Trim(); draft.PythonPath = python.Text.Trim(); draft.AutomaticRestart = restart.Checked;
-            draft.LaunchMode = new string[] { "ManualWindowStartupTray", "AlwaysTray", "AlwaysWindow" }[mode.SelectedIndex];
+            draft.LaunchMode = new string[] { "AlwaysWindow", "ManualWindowStartupTray", "AlwaysTray" }[mode.SelectedIndex];
             try { Validation.All(draft); Result = draft; DialogResult = DialogResult.OK; Close(); }
             catch (Exception ex) { MessageBox.Show(this, Program.SafeError(ex), "检查设置", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
