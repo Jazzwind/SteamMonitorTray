@@ -140,7 +140,9 @@ Tests use local fake monitors and isolated configuration/startup metadata. They 
 
 Real sign-out/sign-in startup behavior should also be checked manually. Tests never sign you out or restart your computer.
 
-For documentation updates, edit this file as the English source, then run `python scripts\SyncReadmeEnglish.py` to update the optional same-page English section in the Chinese README. The offline tests check they remain identical.
+The repository homepage opens in Chinese by default. Select **English** to show this guide on the same page and collapse Chinese; select **简体中文** to switch back. The code listing stays on the repository homepage. This uses native exclusive disclosure sections in modern browsers. Older browsers can expand or collapse each language manually using its disclosure arrow.
+
+For documentation updates, edit this file as the English source, then run `python scripts\SyncReadmeEnglish.py` to update the homepage's English section. The script changes only the Chinese navigation link to an in-page target; all other English content stays identical. This standalone file is also included in the portable package; the homepage offers only in-page language links.
 
 ## License and supporting upstream
 

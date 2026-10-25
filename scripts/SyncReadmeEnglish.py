@@ -1,4 +1,4 @@
-"""Keep README.md's optional same-page English guide equal to README.en.md."""
+"""Embed the English guide with in-page language navigation on the homepage."""
 import argparse
 import pathlib
 import sys
@@ -8,6 +8,12 @@ START = "<!-- ENGLISH_GUIDE_START -->"
 END = "<!-- ENGLISH_GUIDE_END -->"
 
 
+def for_homepage(english):
+    # GitHub prefixes named anchors during sanitization. Link to that final name
+    # so native fragment navigation reveals the closed English/Chinese section.
+    return english.strip().replace('href="README.md"', 'href="#user-content-chinese"')
+
+
 def sync(check=False):
     readme = ROOT / "README.md"
     text = readme.read_text(encoding="utf-8")
@@ -15,7 +21,7 @@ def sync(check=False):
         raise ValueError("Expected one English guide marker pair.")
     before, rest = text.split(START, 1)
     previous, after = rest.split(END, 1)
-    english = (ROOT / "README.en.md").read_text(encoding="utf-8").strip()
+    english = for_homepage((ROOT / "README.en.md").read_text(encoding="utf-8"))
     if check:
         return previous.strip() == english
     readme.write_text(before + START + "\n" + english + "\n" + END + after, encoding="utf-8")

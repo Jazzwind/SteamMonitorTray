@@ -24,11 +24,11 @@ class LocalizationAndDocsTests(unittest.TestCase):
                 self.assertTrue(translated.strip(), source)
                 self.assertEqual(set(re.findall(r"\{\d+\}", translated)), args, source)
 
-    def test_embedded_english_guide_matches_standalone(self):
+    def test_embedded_english_guide_matches_standalone_except_navigation(self):
         chinese = (ROOT / "README.md").read_text(encoding="utf-8")
         english = (ROOT / "README.en.md").read_text(encoding="utf-8").strip()
         embedded = chinese.split("<!-- ENGLISH_GUIDE_START -->", 1)[1].split("<!-- ENGLISH_GUIDE_END -->", 1)[0].strip()
-        self.assertEqual(embedded, english)
+        self.assertEqual(embedded, english.replace('href="README.md"', 'href="#user-content-chinese"'))
         for guide in (chinese, english):
             self.assertIn("https://github.com/misiektoja/steam_monitor", guide)
             self.assertIn("https://github.com/misiektoja", guide)

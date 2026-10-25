@@ -1,9 +1,13 @@
+<details name="readme-language" open>
+<summary><strong>简体中文</strong></summary>
+
+<a name="chinese"></a>
 <a name="readme-top"></a>
 <div align="center">
   <h1>SteamMonitorTray</h1>
   <p><strong>基于 <a href="https://github.com/misiektoja/steam_monitor">misiektoja/steam_monitor</a> 的 Windows 托盘管理器</strong></p>
   <p>原生 PowerShell · 多账号配置 · 开机自启动 · 六种界面语言</p>
-  <p><strong>简体中文</strong> · <a href="README.en.md">English</a> · <a href="#english-on-this-page">English（同页展开）</a></p>
+  <p><strong>简体中文</strong> · <a href="#user-content-english">English</a></p>
 </div>
 
 为 [steam_monitor](https://github.com/misiektoja/steam_monitor) 提供 Windows 托盘、原生 PowerShell 窗口、多配置管理和登录自启动。
@@ -113,7 +117,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 用户填写的配置名称和路径保持原样。原版 steam_monitor 的监测输出、Windows 文件选择对话框有各自的语言行为；新建会话中的本程序引导提示使用所选语言。翻译资源直接内置，不调用在线翻译服务。
 
-GitHub 首页默认显示中文。顶部 **English** 打开独立英文说明；**English（同页展开）** 跳转到本页英文折叠区，点击展开即可留在仓库根目录阅读。GitHub 的 README 不提供网页脚本式的动态语言切换；同页折叠和独立英文文件兼顾两种阅读方式。
+GitHub 首页默认展开中文。点击顶部 **English**，会在当前页面显示英文并收起中文；点击 **简体中文** 可以切回，仓库上方的代码列表保持不变。浏览器需支持原生互斥折叠；较旧浏览器可通过语言标题旁的三角箭头手动展开或收起。
 
 ## 登录自启动与任务管理器
 
@@ -194,7 +198,7 @@ python .\scripts\ScanPrivacy.py
 
 发布 ZIP 位于 `dist`。这是便携运行包，Python 和 `steam_monitor` 需由使用者自行安装。构建脚本兼容 Windows PowerShell 5.1；复制到发布目录的会话脚本使用 UTF-8 BOM，避免中文乱码。
 
-维护英文文档时，以 `README.en.md` 为英文正文来源，修改后运行 `python scripts\SyncReadmeEnglish.py` 同步中文首页里的英文折叠区。离线测试会检查两份英文内容一致。
+维护英文文档时，以 `README.en.md` 为英文正文来源，修改后运行 `python scripts\SyncReadmeEnglish.py` 同步首页英文区。同步时仅将“简体中文”链接改为页内切换，其余英文内容保持一致。`README.en.md` 同时作为便携包中的独立英文说明；首页仅提供页内语言切换入口。
 
 ## 真实机器验收
 
@@ -206,18 +210,19 @@ python .\scripts\ScanPrivacy.py
 
 自动测试不替代真实注销/登录检查；程序不会为了验证自启动而自动注销或重启你的电脑。
 
-<a name="english-on-this-page"></a>
-## English on this page
+</details>
 
-<details>
-<summary><strong>English documentation — click to expand</strong></summary>
+<details name="readme-language">
+<summary><strong>English</strong></summary>
+
+<a name="english"></a>
 
 <!-- ENGLISH_GUIDE_START -->
 <div align="center">
   <h1>SteamMonitorTray</h1>
   <p><strong>A Windows tray companion built for <a href="https://github.com/misiektoja/steam_monitor">misiektoja/steam_monitor</a>.</strong></p>
   <p>Native PowerShell · Multiple profiles · Windows startup · Six interface languages</p>
-  <p><a href="README.md">简体中文</a> · <strong>English</strong> · <a href="https://github.com/misiektoja/steam_monitor">Upstream project</a></p>
+  <p><a href="#user-content-chinese">简体中文</a> · <strong>English</strong> · <a href="https://github.com/misiektoja/steam_monitor">Upstream project</a></p>
 </div>
 
 SteamMonitorTray manages real PowerShell sessions around the existing `steam_monitor` command. Hide a window without interrupting monitoring, restore the same output later, and stop gracefully from the tray.
@@ -355,7 +360,9 @@ Tests use local fake monitors and isolated configuration/startup metadata. They 
 
 Real sign-out/sign-in startup behavior should also be checked manually. Tests never sign you out or restart your computer.
 
-For documentation updates, edit this file as the English source, then run `python scripts\SyncReadmeEnglish.py` to update the optional same-page English section in the Chinese README. The offline tests check they remain identical.
+The repository homepage opens in Chinese by default. Select **English** to show this guide on the same page and collapse Chinese; select **简体中文** to switch back. The code listing stays on the repository homepage. This uses native exclusive disclosure sections in modern browsers. Older browsers can expand or collapse each language manually using its disclosure arrow.
+
+For documentation updates, edit this file as the English source, then run `python scripts\SyncReadmeEnglish.py` to update the homepage's English section. The script changes only the Chinese navigation link to an in-page target; all other English content stays identical. This standalone file is also included in the portable package; the homepage offers only in-page language links.
 
 ## License and supporting upstream
 
