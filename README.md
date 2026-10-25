@@ -142,39 +142,6 @@ python .\scripts\ScanPrivacy.py
 
 发布 ZIP 位于 `dist`。这是便携运行包，Python 和 `steam_monitor` 需由使用者自行安装。构建脚本兼容 Windows PowerShell 5.1；复制到发布目录的会话脚本使用 UTF-8 BOM，避免中文乱码。
 
-## 用另一个 GitHub 账号发布
-
-项目不会自动创建仓库，也不会使用当前连接的 GitHub 账号上传。
-
-1. 在浏览器登录你**希望发布项目的另一个账号**，进入 [新建仓库](https://github.com/new)，名称填 `SteamMonitorTray`，选择 Public 或 Private。创建空仓库，不勾选自动添加 README、许可证或 gitignore。
-2. 在本地项目目录打开 PowerShell，完成构建、测试和隐私扫描。再次确认真实配置均保存在项目外。
-3. 如果目录尚未初始化 Git，执行：
-
-   ```powershell
-   git init -b main
-   git config --local user.name "YOUR_GITHUB_NAME"
-   git config --local user.email "YOUR_GITHUB_NOREPLY_EMAIL"
-   git add .gitignore README.md LICENSE build.ps1 install.ps1 uninstall.ps1 package.ps1 src scripts tests docs .github
-   git diff --cached --stat
-   python .\scripts\ScanPrivacy.py
-   git commit -m "Initial SteamMonitorTray implementation"
-   ```
-
-   `user.name` 和 `user.email` 只是提交署名，**不会切换上传账号**。邮箱可以从另一个账号的 GitHub Settings → Emails 复制 noreply 地址。
-
-4. 把下面占位地址替换为该账号刚创建的仓库地址，再执行：
-
-   ```powershell
-   git remote add origin https://github.com/YOUR_OTHER_ACCOUNT/SteamMonitorTray.git
-   git remote -v
-   git push -u origin main
-   ```
-
-   若已经存在 `origin`，用 `git remote set-url origin <新仓库地址>` 更新，不要重复添加。Git Credential Manager 弹出登录时选用另一个账号；如果自动使用了错误账号，在 Windows 凭据管理器中仅移除或更新对应 GitHub 凭据，再重试。不要把 token 写进仓库地址或脚本。
-
-5. 推送后在浏览器检查仓库文件列表，确认没有私人配置或监测数据。`bin`、`dist`、`artifacts` 都不应出现在源码仓库中。
-6. 如需给别人下载 EXE，在 GitHub → Releases → Draft a new release 创建版本，例如 `v1.0.0`，上传 `package.ps1` 生成并通过扫描的 ZIP。不要上传本地运行目录。
-
 ## 真实机器验收
 
 - 三种显示模式分别手动测试；托盘模式不能闪黑框或出现任务栏窗口。
