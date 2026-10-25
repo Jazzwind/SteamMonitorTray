@@ -2,7 +2,7 @@
   <h1>SteamMonitorTray</h1>
   <p><strong>A Windows tray companion built for <a href="https://github.com/misiektoja/steam_monitor">misiektoja/steam_monitor</a>.</strong></p>
   <p>Native PowerShell · Multiple profiles · Windows startup · Six interface languages</p>
-  <p><a href="README.md">简体中文</a> · <strong>English</strong> · <a href="https://github.com/misiektoja/steam_monitor">Upstream project</a></p>
+  <p><a href="README.md">简体中文</a> · <strong>English</strong></p>
 </div>
 
 SteamMonitorTray manages real PowerShell sessions around the existing `steam_monitor` command. Hide a window without interrupting monitoring, restore the same output later, and stop gracefully from the tray.
