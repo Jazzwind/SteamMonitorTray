@@ -78,7 +78,7 @@ def scan_source():
 
 
 def scan_archive(path):
-    allowed = {"SteamMonitorTray.exe", "SteamMonitorTray.Core.dll", "SteamMonitorTray.Session.exe", "Session.ps1", "InspectConfig.py", "README.md", "LICENSE", "install.ps1", "uninstall.ps1"}
+    allowed = {"SteamMonitorTray.exe", "SteamMonitorTray.Core.dll", "SteamMonitorTray.Session.exe", "Session.ps1", "InspectConfig.py", "README.md", "README.en.md", "LICENSE", "install.ps1", "uninstall.ps1"}
     with zipfile.ZipFile(path) as archive:
         actual = set()
         for number, item in enumerate(archive.infolist()):

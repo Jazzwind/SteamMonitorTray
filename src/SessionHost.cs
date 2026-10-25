@@ -77,7 +77,7 @@ namespace SteamMonitorTray {
         public static int Main(string[] args) {
             try {
                 if (args.Length != 1) return 2;
-                spec = Json.Read<SessionSpec>(args[0]); window = Native.GetConsoleWindow();
+                spec = Json.Read<SessionSpec>(args[0]); L.SetLanguage(spec.Language); window = Native.GetConsoleWindow();
                 if (window == IntPtr.Zero) return 3;
                 Console.Title = "SteamMonitorTray — " + spec.Profile.Name;
                 handler = OnControl; Native.SetConsoleCtrlHandler(handler, true);

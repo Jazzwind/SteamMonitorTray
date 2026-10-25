@@ -35,11 +35,11 @@ internal static class StartupTests {
                 key.SetValue("OtherApp.lnk", Approval(7), RegistryValueKind.Binary);
                 registration.SetRegistered(true);
                 Assert(registration.Read().Approval == StartupApproval.Disabled && ((byte[])key.GetValue("SteamMonitorTray.lnk"))[0] == 3, "registration preserves task manager disable");
-                Settings settings = Settings.Defaults(); settings.Profiles.Add(new Profile { Name = "startup fixture", Enabled = false });
+                Settings settings = Settings.Defaults(); settings.Language = "zh-Hans"; settings.Profiles.Add(new Profile { Name = "startup fixture", Enabled = false });
                 context = new TrayContext(settings, true, Path.Combine(folder, "settings"), registration);
                 Application.DoEvents();
                 string[] order = Menu(context).Items.OfType<ToolStripMenuItem>().Where(item => !String.IsNullOrEmpty(item.Name)).Select(item => item.Name).ToArray();
-                Assert(order.SequenceEqual(new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay" }), "requested tray settings/startup/display order");
+                Assert(order.SequenceEqual(new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay", "Language" }), "requested tray settings/startup/display/language order");
                 Assert(Toggle(context).Checked && Toggle(context).Text.Contains("任务管理器已禁用"), "registered disabled startup stays checked with a warning");
                 Toggle(context).PerformClick();
                 Assert(!registration.Read().Registered && !Toggle(context).Checked && Toggle(context).Text.Contains("未注册"), "startup checkbox removes its own shortcut");

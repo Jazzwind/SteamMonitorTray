@@ -13,19 +13,19 @@ namespace SteamMonitorTray {
         public bool HasWarning { get { return Registered && Approval != StartupApproval.Enabled && Approval != StartupApproval.NotRecorded; } }
         public string MenuText {
             get {
-                if (!Registered) return "开机自启动（未注册）";
-                if (Approval == StartupApproval.Disabled) return "开机自启动（任务管理器已禁用）";
-                if (Approval == StartupApproval.Unknown) return "开机自启动（系统状态未知）";
-                if (Approval == StartupApproval.Unreadable) return "开机自启动（状态读取失败）";
-                return "开机自启动";
+                if (!Registered) return L.Text("开机自启动（未注册）");
+                if (Approval == StartupApproval.Disabled) return L.Text("开机自启动（任务管理器已禁用）");
+                if (Approval == StartupApproval.Unknown) return L.Text("开机自启动（系统状态未知）");
+                if (Approval == StartupApproval.Unreadable) return L.Text("开机自启动（状态读取失败）");
+                return L.Text("开机自启动");
             }
         }
         public string Description {
             get {
-                if (!Registered) return "未注册登录自启动。点击勾选后创建启动项。";
-                if (Approval == StartupApproval.Disabled) return "启动项已注册，但已被任务管理器禁用。请在任务管理器 → 启动应用中启用 SteamMonitorTray；程序不会自动解除禁用。";
-                if (HasWarning) return "启动项已注册，但无法确认 Windows 是否允许启动。请在任务管理器 → 启动应用中核对。";
-                return "已注册登录自启动，未检测到任务管理器禁用。点击取消勾选可移除启动项。";
+                if (!Registered) return L.Text("未注册登录自启动。点击勾选后创建启动项。");
+                if (Approval == StartupApproval.Disabled) return L.Text("启动项已注册，但已被任务管理器禁用。请在任务管理器 → 启动应用中启用 SteamMonitorTray；程序不会自动解除禁用。");
+                if (HasWarning) return L.Text("启动项已注册，但无法确认 Windows 是否允许启动。请在任务管理器 → 启动应用中核对。");
+                return L.Text("已注册登录自启动，未检测到任务管理器禁用。点击取消勾选可移除启动项。");
             }
         }
     }

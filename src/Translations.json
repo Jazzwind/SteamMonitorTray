@@ -1,0 +1,625 @@
+{
+  "语言": [
+    "Language",
+    "Langue",
+    "Язык",
+    "Idioma",
+    "اللغة"
+  ],
+  "自动（跟随系统）": [
+    "Automatic (system language)",
+    "Automatique (langue du système)",
+    "Автоматически (язык системы)",
+    "Automático (idioma del sistema)",
+    "تلقائي (لغة النظام)"
+  ],
+  "退出程序": [
+    "Quit",
+    "Quitter",
+    "Выход",
+    "Salir",
+    "خروج"
+  ],
+  "默认监测": [
+    "Default monitor",
+    "Surveillance par défaut",
+    "Мониторинг по умолчанию",
+    "Monitor predeterminado",
+    "المراقبة الافتراضية"
+  ],
+  "监测 {0}": [
+    "Monitor {0}",
+    "Surveillance {0}",
+    "Мониторинг {0}",
+    "Monitor {0}",
+    "المراقبة {0}"
+  ],
+  "已停止": [
+    "Stopped",
+    "Arrêté",
+    "Остановлено",
+    "Detenido",
+    "متوقف"
+  ],
+  "正在启动": [
+    "Starting",
+    "Démarrage",
+    "Запуск",
+    "Iniciando",
+    "جارٍ البدء"
+  ],
+  "异常": [
+    "Error",
+    "Erreur",
+    "Ошибка",
+    "Error",
+    "خطأ"
+  ],
+  "正在停止": [
+    "Stopping",
+    "Arrêt en cours",
+    "Остановка",
+    "Deteniendo",
+    "جارٍ الإيقاف"
+  ],
+  "等待重试（{0} 秒）": [
+    "Retrying in {0} s",
+    "Nouvel essai dans {0} s",
+    "Повтор через {0} с",
+    "Reintento en {0} s",
+    "إعادة المحاولة بعد {0} ث"
+  ],
+  "监测进程运行": [
+    "Monitor process running",
+    "Processus de surveillance actif",
+    "Процесс мониторинга работает",
+    "Proceso de monitor activo",
+    "عملية المراقبة تعمل"
+  ],
+  "已停止（控制台忙碌）": [
+    "Stopped (console busy)",
+    "Arrêté (console occupée)",
+    "Остановлено (консоль занята)",
+    "Detenido (consola ocupada)",
+    "متوقف (وحدة التحكم مشغولة)"
+  ],
+  "仍在等待停止": [
+    "Still waiting for shutdown",
+    "En attente de l’arrêt",
+    "Ожидание завершения",
+    "Esperando la detención",
+    "لا يزال الإيقاف قيد الانتظار"
+  ],
+  "SteamMonitorTray — 运行 {0}/{1}{2}": [
+    "SteamMonitorTray — Running {0}/{1}{2}",
+    "SteamMonitorTray — Actifs {0}/{1}{2}",
+    "SteamMonitorTray — Работает {0}/{1}{2}",
+    "SteamMonitorTray — Activos {0}/{1}{2}",
+    "SteamMonitorTray — يعمل {0}/{1}{2}"
+  ],
+  "（需关注）": [
+    " (needs attention)",
+    " (à vérifier)",
+    " (требует внимания)",
+    " (requiere atención)",
+    " (يحتاج إلى انتباه)"
+  ],
+  "监测进程运行 {0}/{1}": [
+    "Monitor processes running: {0}/{1}",
+    "Processus actifs : {0}/{1}",
+    "Работает процессов: {0}/{1}",
+    "Procesos activos: {0}/{1}",
+    "عمليات المراقبة النشطة: {0}/{1}"
+  ],
+  "全部启动": [
+    "Start all",
+    "Tout démarrer",
+    "Запустить все",
+    "Iniciar todos",
+    "بدء الكل"
+  ],
+  "全部停止": [
+    "Stop all",
+    "Tout arrêter",
+    "Остановить все",
+    "Detener todos",
+    "إيقاف الكل"
+  ],
+  "显示窗口": [
+    "Show window",
+    "Afficher la fenêtre",
+    "Показать окно",
+    "Mostrar ventana",
+    "إظهار النافذة"
+  ],
+  "隐藏窗口": [
+    "Hide window",
+    "Masquer la fenêtre",
+    "Скрыть окно",
+    "Ocultar ventana",
+    "إخفاء النافذة"
+  ],
+  "启动监测": [
+    "Start monitoring",
+    "Démarrer la surveillance",
+    "Начать мониторинг",
+    "Iniciar monitoreo",
+    "بدء المراقبة"
+  ],
+  "再次发送 Ctrl+C": [
+    "Send Ctrl+C again",
+    "Renvoyer Ctrl+C",
+    "Отправить Ctrl+C ещё раз",
+    "Enviar Ctrl+C de nuevo",
+    "إرسال Ctrl+C مجددًا"
+  ],
+  "停止监测": [
+    "Stop monitoring",
+    "Arrêter la surveillance",
+    "Остановить мониторинг",
+    "Detener monitoreo",
+    "إيقاف المراقبة"
+  ],
+  "打开日志文件夹": [
+    "Open log folder",
+    "Ouvrir le dossier des journaux",
+    "Открыть папку журналов",
+    "Abrir carpeta de registros",
+    "فتح مجلد السجلات"
+  ],
+  "设置与多配置管理…": [
+    "Settings and profiles…",
+    "Paramètres et profils…",
+    "Настройки и профили…",
+    "Configuración y perfiles…",
+    "الإعدادات والملفات…"
+  ],
+  "打开本地设置目录": [
+    "Open local settings folder",
+    "Ouvrir le dossier des paramètres",
+    "Открыть папку настроек",
+    "Abrir carpeta de configuración",
+    "فتح مجلد الإعدادات المحلية"
+  ],
+  "开机自启动": [
+    "Start with Windows",
+    "Démarrer avec Windows",
+    "Запускать с Windows",
+    "Iniciar con Windows",
+    "التشغيل مع Windows"
+  ],
+  "启动时隐藏窗口": [
+    "Hide window on startup",
+    "Masquer la fenêtre au démarrage",
+    "Скрывать окно при запуске",
+    "Ocultar ventana al iniciar",
+    "إخفاء النافذة عند البدء"
+  ],
+  "不隐藏": [
+    "Never hide",
+    "Ne jamais masquer",
+    "Не скрывать",
+    "No ocultar",
+    "عدم الإخفاء"
+  ],
+  "仅开机自启动时隐藏": [
+    "Only when starting with Windows",
+    "Uniquement au démarrage de Windows",
+    "Только при запуске с Windows",
+    "Solo al iniciar con Windows",
+    "عند التشغيل مع Windows فقط"
+  ],
+  "每次启动时隐藏": [
+    "Hide on every launch",
+    "Masquer à chaque lancement",
+    "При каждом запуске",
+    "Ocultar en cada inicio",
+    "الإخفاء عند كل تشغيل"
+  ],
+  "SteamMonitorTray 设置": [
+    "SteamMonitorTray settings",
+    "Paramètres de SteamMonitorTray",
+    "Настройки SteamMonitorTray",
+    "Configuración de SteamMonitorTray",
+    "إعدادات SteamMonitorTray"
+  ],
+  "打开托盘程序后，自动开始监测此账号": [
+    "Automatically monitor this profile when the app starts",
+    "Surveiller automatiquement ce profil au démarrage",
+    "Автоматически отслеживать этот профиль при запуске",
+    "Monitorear este perfil automáticamente al iniciar",
+    "مراقبة هذا الملف تلقائيًا عند تشغيل التطبيق"
+  ],
+  "异常退出后有限重试（默认 5 / 15 / 30 秒）": [
+    "Retry after unexpected exits (default: 5 / 15 / 30 s)",
+    "Réessayer après un arrêt inattendu (5 / 15 / 30 s)",
+    "Повторять после сбоев (по умолчанию: 5 / 15 / 30 с)",
+    "Reintentar tras fallos (por defecto: 5 / 15 / 30 s)",
+    "إعادة المحاولة بعد الأعطال (افتراضيًا: 5 / 15 / 30 ث)"
+  ],
+  "控制程序刚启动时是否显示 PowerShell 窗口；隐藏时只显示托盘图标。之后仍可从托盘显示或隐藏窗口。": [
+    "Choose whether PowerShell is visible on launch. Hidden sessions keep a tray icon; you can show or hide them later.",
+    "Choisissez si PowerShell apparaît au lancement. Les sessions masquées restent accessibles depuis la zone de notification.",
+    "Выберите, показывать ли PowerShell при запуске. Скрытые окна доступны через значок в трее.",
+    "Elija si PowerShell se muestra al iniciar. Las sesiones ocultas siguen disponibles desde la bandeja.",
+    "اختر إظهار PowerShell عند البدء. تبقى الجلسات المخفية متاحة عبر أيقونة شريط النظام."
+  ],
+  "上面的 PowerShell 和 Python 是运行环境。已自动识别到有效程序时，通常不需要修改。": [
+    "PowerShell and Python above are runtime programs. Leave detected valid paths unchanged in most cases.",
+    "PowerShell et Python sont les programmes d’exécution. Les chemins valides détectés n’ont généralement pas besoin d’être modifiés.",
+    "PowerShell и Python — среды выполнения. Правильно найденные пути обычно менять не нужно.",
+    "PowerShell y Python son los programas de ejecución. Normalmente no es necesario cambiar las rutas detectadas.",
+    "PowerShell وPython هما بيئتا التشغيل. عادةً لا يلزم تغيير المسارات الصحيحة المكتشفة."
+  ],
+  "添加已有配置…": [
+    "Add existing profile…",
+    "Ajouter un profil existant…",
+    "Добавить существующий профиль…",
+    "Añadir perfil existente…",
+    "إضافة ملف موجود…"
+  ],
+  "移除": [
+    "Remove",
+    "Retirer",
+    "Удалить",
+    "Quitar",
+    "إزالة"
+  ],
+  "配置名称": [
+    "Profile name",
+    "Nom du profil",
+    "Имя профиля",
+    "Nombre del perfil",
+    "اسم الملف"
+  ],
+  "工作目录": [
+    "Working folder",
+    "Dossier de travail",
+    "Рабочая папка",
+    "Carpeta de trabajo",
+    "مجلد العمل"
+  ],
+  "配置文件（.conf）": [
+    "Config file (.conf)",
+    "Configuration (.conf)",
+    "Конфигурация (.conf)",
+    "Configuración (.conf)",
+    "ملف الإعداد (.conf)"
+  ],
+  "密钥文件（.env）": [
+    "Secrets file (.env)",
+    "Fichier de secrets (.env)",
+    "Файл секретов (.env)",
+    "Credenciales (.env)",
+    "ملف الأسرار (.env)"
+  ],
+  "监测程序（exe）": [
+    "Monitor program (.exe)",
+    "Programme de surveillance (.exe)",
+    "Программа мониторинга (.exe)",
+    "Programa de monitor (.exe)",
+    "برنامج المراقبة (.exe)"
+  ],
+  "只是托盘中的显示名称，例如“主要账号”。这里不用填写 SteamID。": [
+    "A tray display name, such as “Main profile”. Do not enter a SteamID here.",
+    "Nom affiché dans la zone de notification, par exemple « Profil principal ». Aucun SteamID n’est nécessaire ici.",
+    "Имя в трее, например «Основной профиль». SteamID здесь не нужен.",
+    "Nombre mostrado en la bandeja, por ejemplo «Perfil principal». No introduzca un SteamID aquí.",
+    "اسم يظهر في شريط النظام، مثل «الملف الرئيسي». لا تُدخل SteamID هنا."
+  ],
+  "监测运行时使用的文件夹。通常选择你原来保存 steam_monitor.conf 的目录。": [
+    "The monitor’s working folder, usually the existing folder containing steam_monitor.conf.",
+    "Dossier de travail du moniteur, généralement celui qui contient déjà steam_monitor.conf.",
+    "Рабочая папка мониторинга, обычно существующая папка с steam_monitor.conf.",
+    "Carpeta de trabajo del monitor, normalmente la que ya contiene steam_monitor.conf.",
+    "مجلد عمل المراقب، وعادةً هو المجلد الموجود الذي يحتوي على steam_monitor.conf."
+  ],
+  "选择原有 steam_monitor.conf；默认监测账号、通知开关等设置保存在这个文件中。": [
+    "Select your existing steam_monitor.conf containing the default target and notification settings.",
+    "Sélectionnez le fichier steam_monitor.conf existant contenant la cible et les notifications.",
+    "Выберите существующий steam_monitor.conf с целью мониторинга и настройками уведомлений.",
+    "Seleccione el archivo steam_monitor.conf existente con la cuenta y las notificaciones.",
+    "اختر steam_monitor.conf الموجود، والذي يحفظ الحساب الافتراضي وإعدادات الإشعارات."
+  ],
+  "通常选择同目录的 .env；Steam API key、Discord webhook 等密钥保存在这里。只有已另行设置环境变量时才留空。": [
+    "Usually select .env in the same folder. It stores the Steam API key and webhook. Leave blank only if credentials are provided by environment variables.",
+    "Choisissez généralement .env dans le même dossier. Il contient la clé API Steam et le webhook. Laissez vide uniquement si des variables d’environnement fournissent les secrets.",
+    "Обычно выберите .env в той же папке. В нём хранятся ключ API Steam и webhook. Оставляйте поле пустым только при использовании переменных окружения.",
+    "Normalmente seleccione .env en la misma carpeta. Guarda la clave API de Steam y el webhook. Déjelo vacío solo si usa variables de entorno.",
+    "اختر عادةً .env في المجلد نفسه. يحفظ مفتاح Steam API وwebhook. اتركه فارغًا فقط عند توفير الأسرار عبر متغيرات البيئة."
+  ],
+  "选择已安装的 steam_monitor.exe；不是本托盘程序，也不是 powershell.exe 或 python.exe。通常会自动找到。": [
+    "Select the installed steam_monitor.exe, not this tray app, PowerShell or Python. It is normally detected automatically.",
+    "Sélectionnez steam_monitor.exe installé, et non cette application, PowerShell ou Python. Il est généralement détecté automatiquement.",
+    "Выберите установленный steam_monitor.exe, а не приложение трея, PowerShell или Python. Обычно он находится автоматически.",
+    "Seleccione steam_monitor.exe instalado, no esta aplicación, PowerShell ni Python. Normalmente se detecta automáticamente.",
+    "اختر steam_monitor.exe المثبّت، وليس تطبيق الشريط هذا أو PowerShell أو Python. عادةً يُكتشف تلقائيًا."
+  ],
+  "浏览…": [
+    "Browse…",
+    "Parcourir…",
+    "Обзор…",
+    "Examinar…",
+    "استعراض…"
+  ],
+  "浏览": [
+    "Browse",
+    "Parcourir",
+    "Обзор",
+    "Examinar",
+    "استعراض"
+  ],
+  "这个勾选决定打开程序后是否开始监测。Windows 登录自启动需要在托盘菜单中单独注册。": [
+    "This checkbox starts monitoring when the app opens. Register Windows startup separately in the tray menu.",
+    "Cette case démarre la surveillance à l’ouverture. L’inscription au démarrage de Windows se règle séparément dans le menu.",
+    "Этот флажок включает мониторинг при открытии приложения. Автозапуск Windows настраивается отдельно в меню трея.",
+    "Esta casilla inicia el monitoreo al abrir la aplicación. El inicio con Windows se configura por separado en el menú.",
+    "يبدأ هذا الخيار المراقبة عند فتح التطبيق. سجّل التشغيل مع Windows بشكل منفصل من قائمة الشريط."
+  ],
+  "日志保存位置由配置文件决定。新增账号请准备另一份配置，并为它使用独立的日志、CSV 和状态文件，避免互相覆盖。": [
+    "Log locations come from the config file. Use a separate profile and distinct log, CSV and state files for each account.",
+    "Les emplacements des journaux viennent du fichier de configuration. Chaque compte doit utiliser un profil et des fichiers journal, CSV et état distincts.",
+    "Пути журналов заданы в конфигурации. Для каждого аккаунта используйте отдельный профиль и отдельные файлы журналов, CSV и состояния.",
+    "Las rutas de registros vienen de la configuración. Use un perfil y archivos de registro, CSV y estado distintos para cada cuenta.",
+    "تحدد الإعدادات مواقع السجلات. استخدم ملف إعداد وسجلات وCSV وملفات حالة منفصلة لكل حساب لتجنب الكتابة فوقها."
+  ],
+  "保存": [
+    "Save",
+    "Enregistrer",
+    "Сохранить",
+    "Guardar",
+    "حفظ"
+  ],
+  "取消": [
+    "Cancel",
+    "Annuler",
+    "Отмена",
+    "Cancelar",
+    "إلغاء"
+  ],
+  "全局选项仍可修改。要编辑账号配置，请先停止监测，并在所有已有 PowerShell 窗口中输入 exit 关闭会话，然后重新打开设置。": [
+    "Global options remain editable. To edit profiles, stop monitoring, enter exit in all existing PowerShell sessions, then reopen settings.",
+    "Les options générales restent modifiables. Pour modifier les profils, arrêtez la surveillance, saisissez exit dans chaque session PowerShell, puis rouvrez les paramètres.",
+    "Общие настройки доступны. Для изменения профилей остановите мониторинг, введите exit во всех сеансах PowerShell и снова откройте настройки.",
+    "Puede cambiar opciones generales. Para editar perfiles, detenga el monitoreo, escriba exit en las sesiones de PowerShell y vuelva a abrir la configuración.",
+    "تبقى الخيارات العامة قابلة للتعديل. لتعديل الملفات، أوقف المراقبة واكتب exit في جميع جلسات PowerShell ثم افتح الإعدادات مجددًا."
+  ],
+  "还没有添加账号配置。请点击左下方“添加已有配置…”，选择原来保存 steam_monitor.conf 的文件夹；大部分路径会自动填写。": [
+    "No profiles yet. Click “Add existing profile…” and select the folder containing steam_monitor.conf. Most paths will be filled automatically.",
+    "Aucun profil. Cliquez sur « Ajouter un profil existant… » et choisissez le dossier contenant steam_monitor.conf. La plupart des chemins seront remplis automatiquement.",
+    "Профилей пока нет. Нажмите «Добавить существующий профиль…» и выберите папку с steam_monitor.conf. Большинство путей заполнится автоматически.",
+    "No hay perfiles. Pulse «Añadir perfil existente…» y seleccione la carpeta con steam_monitor.conf. La mayoría de las rutas se rellenarán automáticamente.",
+    "لا توجد ملفات بعد. انقر «إضافة ملف موجود…» واختر المجلد الذي يحتوي على steam_monitor.conf. ستُملأ معظم المسارات تلقائيًا."
+  ],
+  "选择左侧配置，确认右侧路径，勾选自动开始监测后保存。这里只引用原有文件，不复制密钥、监测账号或历史记录到项目中。": [
+    "Select a profile, check its paths, enable automatic monitoring and save. Existing files are referenced; secrets, targets and history are not copied into the project.",
+    "Sélectionnez un profil, vérifiez les chemins, activez la surveillance automatique et enregistrez. Les secrets, cibles et historiques ne sont pas copiés dans le projet.",
+    "Выберите профиль, проверьте пути, включите автоматический мониторинг и сохраните. Секреты, цели и история не копируются в проект.",
+    "Seleccione un perfil, compruebe las rutas, active el monitoreo automático y guarde. Los secretos, cuentas e historial no se copian al proyecto.",
+    "اختر ملفًا وتحقق من المسارات وفعّل المراقبة التلقائية ثم احفظ. تُستخدم الملفات الأصلية دون نسخ الأسرار أو الحسابات أو السجل إلى المشروع."
+  ],
+  "所有文件|*.*": [
+    "All files|*.*",
+    "Tous les fichiers|*.*",
+    "Все файлы|*.*",
+    "Todos los archivos|*.*",
+    "جميع الملفات|*.*"
+  ],
+  "选择原来保存 steam_monitor.conf 的文件夹（不是托盘程序源码目录）": [
+    "Select the existing steam_monitor.conf folder (not this app’s source folder)",
+    "Choisissez le dossier existant de steam_monitor.conf (pas les sources de cette application)",
+    "Выберите существующую папку с steam_monitor.conf (не исходники приложения)",
+    "Seleccione la carpeta existente de steam_monitor.conf (no el código de esta aplicación)",
+    "اختر مجلد steam_monitor.conf الموجود (وليس مجلد مصدر التطبيق)"
+  ],
+  "这个文件夹中没有 steam_monitor.conf。请选择之前保存监测设置的文件夹。": [
+    "This folder has no steam_monitor.conf. Select the folder where you saved the monitor settings.",
+    "Ce dossier ne contient pas steam_monitor.conf. Choisissez le dossier des paramètres du moniteur.",
+    "В папке нет steam_monitor.conf. Выберите папку с сохранёнными настройками мониторинга.",
+    "Esta carpeta no contiene steam_monitor.conf. Seleccione la carpeta donde guardó la configuración.",
+    "لا يحتوي هذا المجلد على steam_monitor.conf. اختر المجلد الذي حفظت فيه إعدادات المراقبة."
+  ],
+  "未找到监测配置": [
+    "Monitor config not found",
+    "Configuration introuvable",
+    "Конфигурация не найдена",
+    "Configuración no encontrada",
+    "لم يُعثر على إعداد المراقبة"
+  ],
+  "检查设置": [
+    "Check settings",
+    "Vérifier les paramètres",
+    "Проверка настроек",
+    "Revisar configuración",
+    "مراجعة الإعدادات"
+  ],
+  "开机自启动（未注册）": [
+    "Start with Windows (not registered)",
+    "Démarrer avec Windows (non inscrit)",
+    "Запускать с Windows (не зарегистрировано)",
+    "Iniciar con Windows (no registrado)",
+    "التشغيل مع Windows (غير مسجّل)"
+  ],
+  "开机自启动（任务管理器已禁用）": [
+    "Start with Windows (disabled in Task Manager)",
+    "Démarrer avec Windows (désactivé par le Gestionnaire des tâches)",
+    "Запускать с Windows (отключено в Диспетчере задач)",
+    "Iniciar con Windows (deshabilitado en el Administrador de tareas)",
+    "التشغيل مع Windows (معطّل في إدارة المهام)"
+  ],
+  "开机自启动（系统状态未知）": [
+    "Start with Windows (system state unknown)",
+    "Démarrer avec Windows (état système inconnu)",
+    "Запускать с Windows (состояние неизвестно)",
+    "Iniciar con Windows (estado desconocido)",
+    "التشغيل مع Windows (حالة النظام غير معروفة)"
+  ],
+  "开机自启动（状态读取失败）": [
+    "Start with Windows (state unavailable)",
+    "Démarrer avec Windows (état inaccessible)",
+    "Запускать с Windows (состояние недоступно)",
+    "Iniciar con Windows (estado no disponible)",
+    "التشغيل مع Windows (تعذرت قراءة الحالة)"
+  ],
+  "未注册登录自启动。点击勾选后创建启动项。": [
+    "Not registered for Windows startup. Check this item to register.",
+    "Non inscrit au démarrage de Windows. Cochez cette option pour l’inscrire.",
+    "Автозапуск не зарегистрирован. Установите флажок для регистрации.",
+    "No registrado para iniciar con Windows. Marque esta opción para registrarlo.",
+    "غير مسجّل للتشغيل مع Windows. حدّد هذا الخيار لإنشاء عنصر التشغيل."
+  ],
+  "启动项已注册，但已被任务管理器禁用。请在任务管理器 → 启动应用中启用 SteamMonitorTray；程序不会自动解除禁用。": [
+    "Registered, but disabled in Task Manager. Enable SteamMonitorTray under Task Manager → Startup apps. This app will not override that choice.",
+    "Inscrit, mais désactivé dans le Gestionnaire des tâches. Activez SteamMonitorTray dans Applications de démarrage. L’application ne modifie pas ce choix.",
+    "Запуск зарегистрирован, но отключён в Диспетчере задач. Включите SteamMonitorTray в разделе автозагрузки. Приложение не отменяет этот запрет.",
+    "Registrado, pero deshabilitado en el Administrador de tareas. Active SteamMonitorTray en Aplicaciones de inicio. La aplicación no anulará esa decisión.",
+    "مسجّل لكنه معطّل في إدارة المهام. فعّل SteamMonitorTray ضمن تطبيقات بدء التشغيل. لن يتجاوز التطبيق هذا الاختيار."
+  ],
+  "启动项已注册，但无法确认 Windows 是否允许启动。请在任务管理器 → 启动应用中核对。": [
+    "Registered, but Windows approval could not be confirmed. Check Task Manager → Startup apps.",
+    "Inscrit, mais l’autorisation de Windows n’a pas pu être vérifiée. Consultez les applications de démarrage du Gestionnaire des tâches.",
+    "Запуск зарегистрирован, но разрешение Windows не подтверждено. Проверьте раздел автозагрузки Диспетчера задач.",
+    "Registrado, pero no se pudo confirmar el permiso de Windows. Compruebe Aplicaciones de inicio en el Administrador de tareas.",
+    "مسجّل لكن تعذر تأكيد سماح Windows بالتشغيل. تحقق من تطبيقات بدء التشغيل في إدارة المهام."
+  ],
+  "已注册登录自启动，未检测到任务管理器禁用。点击取消勾选可移除启动项。": [
+    "Registered for Windows startup; no Task Manager disable detected. Uncheck to remove the startup item.",
+    "Inscrit au démarrage de Windows ; aucune désactivation détectée. Décochez pour retirer l’entrée.",
+    "Автозапуск зарегистрирован; отключение не обнаружено. Снимите флажок, чтобы удалить запись.",
+    "Registrado para iniciar con Windows; no se detectó deshabilitación. Desmarque para quitarlo.",
+    "مسجّل للتشغيل مع Windows؛ لم يُكتشف تعطيل في إدارة المهام. أزل التحديد لحذف عنصر التشغيل."
+  ],
+  "界面操作失败，请检查本地包装器日志。监测不会因此被强制终止。": [
+    "A UI action failed. Check the local launcher log. Monitoring is not forcibly terminated.",
+    "Une action de l’interface a échoué. Consultez le journal local. La surveillance n’est pas arrêtée de force.",
+    "Ошибка действия интерфейса. Проверьте локальный журнал. Мониторинг не завершается принудительно.",
+    "Falló una acción de la interfaz. Revise el registro local. El monitoreo no se termina a la fuerza.",
+    "فشل إجراء في الواجهة. راجع سجل المشغّل المحلي. لن تُنهى المراقبة قسرًا."
+  ],
+  "SteamMonitorTray 已在运行，请使用通知区域图标。导入配置前请先从托盘退出。": [
+    "SteamMonitorTray is already running. Use its tray icon. Quit from the tray before importing profiles.",
+    "SteamMonitorTray est déjà actif. Utilisez son icône et quittez avant d’importer des profils.",
+    "SteamMonitorTray уже работает. Используйте значок в трее. Перед импортом профилей выйдите через меню.",
+    "SteamMonitorTray ya está ejecutándose. Use su icono y salga desde la bandeja antes de importar perfiles.",
+    "SteamMonitorTray يعمل بالفعل. استخدم أيقونة الشريط واخرج منها قبل استيراد الملفات."
+  ],
+  "操作失败：{0}": [
+    "Operation failed: {0}",
+    "Échec de l’opération : {0}",
+    "Ошибка операции: {0}",
+    "Error en la operación: {0}",
+    "فشلت العملية: {0}"
+  ],
+  "{0}。请检查路径、权限和程序依赖。": [
+    "{0}. Check paths, permissions and dependencies.",
+    "{0}. Vérifiez les chemins, les autorisations et les dépendances.",
+    "{0}. Проверьте пути, права и зависимости.",
+    "{0}. Compruebe rutas, permisos y dependencias.",
+    "{0}. تحقق من المسارات والأذونات والمتطلبات."
+  ],
+  "{0} 已停止，请查看控制台。自动重试已结束或未开启。": [
+    "{0} stopped. Check its console. Automatic retries are exhausted or disabled.",
+    "{0} est arrêté. Consultez sa console. Les essais automatiques sont épuisés ou désactivés.",
+    "{0} остановлен. Проверьте консоль. Автоматические повторы закончились или отключены.",
+    "{0} se detuvo. Revise su consola. Los reintentos se agotaron o están desactivados.",
+    "توقفت {0}. راجع وحدة التحكم. انتهت المحاولات التلقائية أو أنها معطّلة."
+  ],
+  "控制台正在执行命令或有未提交输入，请完成或清空后重试。不会覆盖输入。": [
+    "The console is busy or has unsubmitted input. Complete or clear it and try again. Your input is preserved.",
+    "La console est occupée ou contient une saisie non validée. Terminez ou effacez-la, puis réessayez. Votre saisie est conservée.",
+    "Консоль занята или содержит незавершённый ввод. Завершите или очистите ввод и повторите. Ввод не перезаписывается.",
+    "La consola está ocupada o tiene texto sin enviar. Complételo o bórrelo e inténtelo de nuevo. Su entrada se conserva.",
+    "وحدة التحكم مشغولة أو تحتوي على إدخال غير مُرسل. أكمله أو امسحه ثم أعد المحاولة. سيُحفظ الإدخال."
+  ],
+  "会话发生错误，请显示控制台检查。": [
+    "A session error occurred. Show the console to investigate.",
+    "Une erreur de session est survenue. Affichez la console.",
+    "Ошибка сеанса. Откройте консоль для проверки.",
+    "Ocurrió un error de sesión. Abra la consola para revisarlo.",
+    "حدث خطأ في الجلسة. أظهر وحدة التحكم لفحصه."
+  ],
+  "{0} 尚未退出，可以继续等待或再次选择停止监测。": [
+    "{0} has not exited. Keep waiting or choose Stop monitoring again.",
+    "{0} n’est pas encore terminé. Patientez ou sélectionnez à nouveau Arrêter la surveillance.",
+    "{0} ещё работает. Подождите или снова выберите остановку мониторинга.",
+    "{0} aún no terminó. Espere o seleccione Detener monitoreo de nuevo.",
+    "لم تنتهِ {0} بعد. انتظر أو اختر إيقاف المراقبة مجددًا."
+  ],
+  "设置格式无效。": [
+    "Invalid settings format.",
+    "Format des paramètres invalide.",
+    "Неверный формат настроек.",
+    "Formato de configuración no válido.",
+    "تنسيق الإعدادات غير صالح."
+  ],
+  "启动显示策略无效。": [
+    "Invalid startup window option.",
+    "Option de fenêtre au démarrage invalide.",
+    "Неверный режим окна при запуске.",
+    "Opción de ventana de inicio no válida.",
+    "خيار نافذة البدء غير صالح."
+  ],
+  "重试间隔必须为 1–3600 秒。": [
+    "Retry intervals must be 1–3600 seconds.",
+    "Les délais doivent être compris entre 1 et 3600 secondes.",
+    "Интервалы повторов должны составлять 1–3600 секунд.",
+    "Los intervalos deben estar entre 1 y 3600 segundos.",
+    "يجب أن تكون فترات إعادة المحاولة بين 1 و3600 ثانية."
+  ],
+  "配置名称或标识无效。": [
+    "Invalid profile name or identifier.",
+    "Nom ou identifiant de profil invalide.",
+    "Неверное имя или идентификатор профиля.",
+    "Nombre o identificador de perfil no válido.",
+    "اسم الملف أو معرّفه غير صالح."
+  ],
+  "请在设置中选择有效的 PowerShell 和 Python 程序。": [
+    "Select valid PowerShell and Python programs in settings.",
+    "Sélectionnez des programmes PowerShell et Python valides.",
+    "Выберите правильные программы PowerShell и Python в настройках.",
+    "Seleccione programas válidos de PowerShell y Python en la configuración.",
+    "اختر برنامجي PowerShell وPython صالحين في الإعدادات."
+  ],
+  "工作目录、配置、环境文件或监测程序不存在。": [
+    "The working folder, config, secrets file or monitor program is missing.",
+    "Le dossier de travail, la configuration, le fichier de secrets ou le programme est introuvable.",
+    "Рабочая папка, конфигурация, файл секретов или программа не найдены.",
+    "Falta la carpeta de trabajo, configuración, credenciales o programa de monitor.",
+    "مجلد العمل أو الإعداد أو ملف الأسرار أو برنامج المراقبة غير موجود."
+  ],
+  "无法安全检查配置；请确认 Python 可运行。": [
+    "Could not safely inspect the config. Check that Python runs.",
+    "Impossible d’inspecter la configuration. Vérifiez que Python fonctionne.",
+    "Не удалось безопасно проверить конфигурацию. Убедитесь, что Python работает.",
+    "No se pudo revisar la configuración de forma segura. Compruebe que Python funciona.",
+    "تعذر فحص الإعداد بأمان. تحقق من عمل Python."
+  ],
+  "配置间存在重复输出文件，请为每个实例设置独立的日志、CSV 和状态文件。": [
+    "Profiles share output files. Assign distinct log, CSV and state files to every instance.",
+    "Des profils partagent des fichiers de sortie. Utilisez des fichiers journal, CSV et état distincts.",
+    "Профили используют общие выходные файлы. Задайте отдельные журналы, CSV и файлы состояния.",
+    "Los perfiles comparten archivos de salida. Asigne registros, CSV y estados distintos.",
+    "تستخدم الملفات مخرجات مشتركة. عيّن سجلات وCSV وملفات حالة منفصلة لكل نسخة."
+  ],
+  "配置间存在重复输出文件，请为每个实例设置独立输出。": [
+    "Profiles share output files. Use distinct outputs for each instance.",
+    "Des profils partagent des fichiers de sortie. Séparez les sorties de chaque instance.",
+    "Профили используют общие выходные файлы. Разделите выходные файлы экземпляров.",
+    "Los perfiles comparten archivos de salida. Use archivos distintos por instancia.",
+    "تستخدم الملفات مخرجات مشتركة. استخدم مخرجات منفصلة لكل نسخة."
+  ],
+  "无法安全确认默认目标和输出路径；请使用静态赋值并为每个实例设置独立输出。": [
+    "Could not safely verify the default target and output paths. Use static assignments and separate outputs for each instance.",
+    "Impossible de vérifier la cible et les chemins. Utilisez des affectations statiques et des sorties distinctes.",
+    "Не удалось проверить цель и пути. Используйте статические значения и отдельные выходные файлы.",
+    "No se pudieron verificar la cuenta y las rutas. Use valores estáticos y archivos separados.",
+    "تعذر التحقق من الحساب الافتراضي والمسارات. استخدم قيمًا ثابتة ومخرجات منفصلة لكل نسخة."
+  ],
+  "SteamMonitorTray — 使用 steam_monitor 启动，Ctrl+C 停止，最小化收进托盘。": [
+    "SteamMonitorTray — Enter steam_monitor to start; Ctrl+C stops monitoring; minimize to tray.",
+    "SteamMonitorTray — Saisissez steam_monitor pour démarrer ; Ctrl+C arrête ; réduisez vers la zone de notification.",
+    "SteamMonitorTray — Введите steam_monitor для запуска; Ctrl+C останавливает; сворачивание убирает окно в трей.",
+    "SteamMonitorTray — Escriba steam_monitor para iniciar; Ctrl+C detiene; minimice a la bandeja.",
+    "SteamMonitorTray — اكتب steam_monitor للبدء؛ Ctrl+C يوقف المراقبة؛ صغّر إلى شريط النظام."
+  ]
+}

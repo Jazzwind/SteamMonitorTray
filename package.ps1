@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $folder -Force | Out-Null
 $runtimeFiles = 'SteamMonitorTray.exe','SteamMonitorTray.Core.dll','SteamMonitorTray.Session.exe','Session.ps1','InspectConfig.py'
 # Explicit allowlist: never package all of bin or any runtime/config directory.
 foreach ($name in $runtimeFiles) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot "bin\$name") -Destination $folder -Force }
-foreach ($name in @('README.md','LICENSE','install.ps1','uninstall.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $folder -Force }
+foreach ($name in @('README.md','README.en.md','LICENSE','install.ps1','uninstall.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $folder -Force }
 $archive = Join-Path $PSScriptRoot ("dist\SteamMonitorTray-$Version-portable.zip")
 Compress-Archive -LiteralPath $folder -DestinationPath $archive -Force
 & python (Join-Path $PSScriptRoot 'scripts\ScanPrivacy.py') --archive $archive

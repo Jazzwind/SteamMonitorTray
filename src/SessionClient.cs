@@ -18,7 +18,7 @@ namespace SteamMonitorTray {
         public void Start(Profile profile, Settings settings, string runtimeDirectory) {
             Files.EnsurePrivateDirectory(runtimeDirectory);
             string key = Guid.NewGuid().ToString("N");
-            SessionSpec spec = new SessionSpec { Profile = profile.Copy(), ShellPath = settings.ShellPath, Token = Guid.NewGuid().ToString("N"), ControllerPipe = "SMT.C." + key, ShellPipe = "SMT.S." + key };
+            SessionSpec spec = new SessionSpec { Profile = profile.Copy(), ShellPath = settings.ShellPath, Language = L.Resolve(settings.Language, L.PreferredLanguages()), Token = Guid.NewGuid().ToString("N"), ControllerPipe = "SMT.C." + key, ShellPipe = "SMT.S." + key };
             specFile = Path.Combine(runtimeDirectory, key + ".json"); Json.Save(specFile, spec);
             Process = Native.StartHiddenConsole(Path.Combine(Files.Bin, "SteamMonitorTray.Session.exe"), Native.Quote(specFile), profile.WorkingDirectory);
             Thread thread = new Thread(delegate() {

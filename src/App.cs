@@ -14,17 +14,18 @@ namespace SteamMonitorTray {
         [STAThread] public static int Main(string[] args) {
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-            Application.ThreadException += delegate(object sender, ThreadExceptionEventArgs e) { Files.Log("ui", e.Exception.GetType().Name); MessageBox.Show("界面操作失败，请检查本地包装器日志。监测不会因此被强制终止。", "SteamMonitorTray"); };
+            Application.ThreadException += delegate(object sender, ThreadExceptionEventArgs e) { Files.Log("ui", e.Exception.GetType().Name); MessageBox.Show(L.Text("界面操作失败，请检查本地包装器日志。监测不会因此被强制终止。"), "SteamMonitorTray"); };
             try {
                 Files.EnsurePrivateDirectory(Files.DataRoot);
                 if (args.Length == 1 && args[0] == "--install-startup") { Startup.Install(); return 0; }
                 if (args.Length == 1 && args[0] == "--uninstall-startup") { Startup.Remove(); return 0; }
+                Settings settings = File.Exists(Files.SettingsPath) ? Json.Read<Settings>(Files.SettingsPath) : Settings.Defaults();
+                L.SetLanguage(settings.Language);
                 bool owns;
                 using (Mutex mutex = new Mutex(true, "Local\\SteamMonitorTray." + System.Security.Principal.WindowsIdentity.GetCurrent().User.Value, out owns)) {
-                    if (!owns) { MessageBox.Show("SteamMonitorTray 已在运行，请使用通知区域图标。导入配置前请先从托盘退出。", "SteamMonitorTray"); return args.Length == 2 ? 2 : 0; }
-                    Settings settings = File.Exists(Files.SettingsPath) ? Json.Read<Settings>(Files.SettingsPath) : Settings.Defaults();
+                    if (!owns) { MessageBox.Show(L.Text("SteamMonitorTray 已在运行，请使用通知区域图标。导入配置前请先从托盘退出。"), "SteamMonitorTray"); return args.Length == 2 ? 2 : 0; }
                     if (args.Length == 2 && args[0] == "--import-directory") {
-                        Profile profile = Files.FromDirectory(args[1]); profile.Name = "监测 " + (settings.Profiles.Count + 1);
+                        Profile profile = Files.FromDirectory(args[1]); profile.Name = L.Text("监测 {0}", settings.Profiles.Count + 1);
                         settings.Profiles.Add(profile); Validation.All(settings); Json.Save(Files.SettingsPath, settings); return 0;
                     }
                     Application.Run(new TrayContext(settings, Array.IndexOf(args, "--startup") >= 0, Files.DataRoot));
@@ -32,12 +33,12 @@ namespace SteamMonitorTray {
                 return 0;
             } catch (Exception ex) {
                 Files.Log("app", ex.GetType().Name);
-                MessageBox.Show("操作失败：" + SafeError(ex), "SteamMonitorTray", MessageBoxButtons.OK, MessageBoxIcon.Error); return 1;
+                MessageBox.Show(L.Text("操作失败：{0}", SafeError(ex)), "SteamMonitorTray", MessageBoxButtons.OK, MessageBoxIcon.Error); return 1;
             }
         }
         public static string SafeError(Exception ex) {
-            if (ex is InvalidDataException) return ex.Message;
-            return ex.GetType().Name + "。请检查路径、权限和程序依赖。";
+            if (ex is InvalidDataException) return L.Text(ex.Message);
+            return L.Text("{0}。请检查路径、权限和程序依赖。", ex.GetType().Name);
         }
     }
     internal sealed class Runtime {
@@ -77,6 +78,7 @@ namespace SteamMonitorTray {
         public TrayContext(Settings initial, bool isStartup, string localDataRoot) : this(initial, isStartup, localDataRoot, Startup.Registration) { }
         internal TrayContext(Settings initial, bool isStartup, string localDataRoot, StartupRegistration registration) {
             settings = initial; startup = isStartup; dataRoot = localDataRoot;
+            L.SetLanguage(settings.Language);
             startupRegistration = registration;
             IntPtr handle = dispatcher.Handle;
             icon = new NotifyIcon { Icon = SystemIcons.Application, Text = "SteamMonitorTray", Visible = true };
@@ -89,7 +91,7 @@ namespace SteamMonitorTray {
                 catch (Exception ex) { Notice(Program.SafeError(ex)); EditSettings(); }
             });
         }
-        private void Notice(string text) { icon.ShowBalloonTip(5000, "SteamMonitorTray", text, ToolTipIcon.Info); }
+        private void Notice(string text) { icon.ShowBalloonTip(5000, "SteamMonitorTray", L.Text(text), ToolTipIcon.Info); }
         private void SynchronizeProfiles() {
             foreach (Profile p in settings.Profiles) {
                 Runtime runtime;
@@ -133,7 +135,7 @@ namespace SteamMonitorTray {
         private void Failed(Runtime r, TimeSpan lifetime) {
             int delay = r.Desired && !quitting ? r.Retry.Next(settings, lifetime) : -1;
             if (delay >= 0) { r.RetryAt = DateTime.UtcNow.AddSeconds(delay); r.Status = "等待重试（" + delay + " 秒）"; }
-            else { r.Desired = false; r.Status = "异常"; Notice(r.Profile.Name + " 已停止，请查看控制台。自动重试已结束或未开启。"); }
+            else { r.Desired = false; r.Status = "异常"; Notice(L.Text("{0} 已停止，请查看控制台。自动重试已结束或未开启。", r.Profile.Name)); }
         }
         private void Receive(Runtime r, Wire message) {
             switch (message.Kind) {
@@ -182,7 +184,7 @@ namespace SteamMonitorTray {
             foreach (Runtime r in runtimes.Values) {
                 if (r.RetryAt != DateTime.MinValue && DateTime.UtcNow >= r.RetryAt) { r.RetryAt = DateTime.MinValue; Start(r, false); }
                 if (r.Stopping && DateTime.UtcNow >= r.StopDeadline) {
-                    r.Status = "仍在等待停止"; r.StopDeadline = DateTime.MaxValue; Notice(r.Profile.Name + " 尚未退出，可以继续等待或再次选择停止监测。"); RefreshMenu();
+                    r.Status = "仍在等待停止"; r.StopDeadline = DateTime.MaxValue; Notice(L.Text("{0} 尚未退出，可以继续等待或再次选择停止监测。", r.Profile.Name)); RefreshMenu();
                 }
                 if (quitting && r.Alive && !r.Running && !r.StartSent && r.Prompt && !r.ExitSent) { r.ExitSent = true; r.Client.Send("Exit"); }
             }
@@ -192,6 +194,11 @@ namespace SteamMonitorTray {
         }
         private void ShowAll() { foreach (Runtime r in runtimes.Values) if (r.Alive) r.Client.Send("Show"); }
         private void SaveSettings() { Json.Save(Path.Combine(dataRoot, "settings.json"), settings); }
+        private void SetLanguage(string code) {
+            string previous = settings.Language;
+            try { settings.Language = L.Normalize(code); SaveSettings(); L.SetLanguage(settings.Language); RefreshMenu(); }
+            catch (Exception ex) { settings.Language = previous; L.SetLanguage(previous); Notice(Program.SafeError(ex)); }
+        }
         private void UpdateStartupItem(ToolStripMenuItem item) {
             StartupState state = startupRegistration.Read();
             item.Checked = state.Registered; item.Text = state.MenuText; item.ToolTipText = state.Description;
@@ -214,13 +221,14 @@ namespace SteamMonitorTray {
                 }
             }
         }
-        private ToolStripMenuItem Item(string text, Action action) { ToolStripMenuItem item = new ToolStripMenuItem(text); item.Click += delegate { action(); }; return item; }
+        private ToolStripMenuItem Item(string text, Action action) { ToolStripMenuItem item = new ToolStripMenuItem(L.Text(text)); item.Click += delegate { action(); }; return item; }
         private void RefreshMenu() {
             if (icon == null || dispatcher.IsDisposed) return;
             int running = runtimes.Values.Count(r => r.Running), total = settings.Profiles.Count(p => p.Enabled);
             bool fault = runtimes.Values.Any(r => r.Status.Contains("异常") || r.Status.Contains("等待"));
             Icon nextIcon = fault ? warningIcon : (running > 0 ? runningIcon : stoppedIcon);
-            string nextText = "SteamMonitorTray — 运行 " + running + "/" + total + (fault ? "（需关注）" : "");
+            string nextText = L.Text("SteamMonitorTray — 运行 {0}/{1}{2}", running, total, fault ? L.Text("（需关注）") : "");
+            if (nextText.Length > 63) nextText = nextText.Substring(0, 62) + "…";
             if (icon.Icon != nextIcon) icon.Icon = nextIcon;
             if (icon.Text != nextText) icon.Text = nextText;
             ContextMenuStrip old = icon.ContextMenuStrip;
@@ -228,17 +236,19 @@ namespace SteamMonitorTray {
             if (old != null && old.Visible) { menuRefreshPending = true; return; }
             menuRefreshPending = false;
             ContextMenuStrip menu = new ContextMenuStrip { ShowCheckMargin = true, ShowImageMargin = false, ShowItemToolTips = true };
+            menu.RightToLeft = L.IsRtl ? RightToLeft.Yes : RightToLeft.No;
             menu.Closed += delegate {
                 if (menuRefreshPending && !dispatcher.IsDisposed) dispatcher.BeginInvoke((Action)delegate {
                     if (menuRefreshPending && !dispatcher.IsDisposed) RefreshMenu();
                 });
             };
-            menu.Items.Add(new ToolStripMenuItem("监测进程运行 " + running + "/" + total) { Enabled = false });
+            menu.Items.Add(new ToolStripMenuItem(L.Text("监测进程运行 {0}/{1}", running, total)) { Enabled = false });
             menu.Items.Add(Item("全部启动", delegate { foreach (Runtime r in runtimes.Values) if (r.Profile.Enabled) Start(r, true); }));
             menu.Items.Add(Item("全部停止", delegate { foreach (Runtime r in runtimes.Values) Stop(r); }));
             menu.Items.Add(new ToolStripSeparator());
             foreach (Runtime r in runtimes.Values) {
-                ToolStripMenuItem profile = new ToolStripMenuItem(r.Profile.Name + " — " + r.Status);
+                ToolStripMenuItem profile = new ToolStripMenuItem(L.Text("{0} — {1}", r.Profile.Name, L.Text(r.Status)));
+                profile.DropDown.RightToLeft = menu.RightToLeft;
                 profile.ForeColor = r.Running ? Color.ForestGreen : (r.Status.Contains("异常") || r.Status.Contains("等待") ? Color.DarkOrange : Color.DimGray);
                 profile.DropDownItems.Add(Item("显示窗口", delegate { if (r.Alive) r.Client.Send("Show"); }));
                 profile.DropDownItems.Add(Item("隐藏窗口", delegate { if (r.Alive) r.Client.Send("Hide"); }));
@@ -254,7 +264,7 @@ namespace SteamMonitorTray {
             UpdateStartupItem(startupItem); menu.Items.Add(startupItem);
             // Read the actual shortcut and Windows approval again on every opening, including external Task Manager changes.
             menu.Opening += delegate { UpdateStartupItem(startupItem); };
-            ToolStripMenuItem modes = new ToolStripMenuItem("启动时隐藏窗口");
+            ToolStripMenuItem modes = new ToolStripMenuItem(L.Text("启动时隐藏窗口")); modes.DropDown.RightToLeft = menu.RightToLeft;
             modes.Name = "LaunchDisplay";
             string[] keys = { "AlwaysWindow", "ManualWindowStartupTray", "AlwaysTray" }, labels = { "不隐藏", "仅开机自启动时隐藏", "每次启动时隐藏" };
             for (int i = 0; i < keys.Length; i++) {
@@ -262,7 +272,14 @@ namespace SteamMonitorTray {
                 item.Checked = settings.LaunchMode == key; modes.DropDownItems.Add(item);
             }
             menu.Items.Add(modes);
-            menu.Items.Add(new ToolStripSeparator()); menu.Items.Add(Item("退出程序（先发送 Ctrl+C）", Quit));
+            ToolStripMenuItem languages = new ToolStripMenuItem(L.Text("语言")) { Name = "Language" }; languages.DropDown.RightToLeft = menu.RightToLeft;
+            ToolStripMenuItem automatic = Item("自动（跟随系统）", delegate { SetLanguage("auto"); }); automatic.Checked = settings.Language == "auto"; languages.DropDownItems.Add(automatic);
+            for (int i = 0; i < L.Codes.Length; i++) {
+                string code = L.Codes[i]; ToolStripMenuItem languageItem = new ToolStripMenuItem(L.Names[i]);
+                languageItem.Checked = settings.Language == code; languageItem.Click += delegate { SetLanguage(code); }; languages.DropDownItems.Add(languageItem);
+            }
+            menu.Items.Add(languages);
+            menu.Items.Add(new ToolStripSeparator()); menu.Items.Add(Item("退出程序", Quit));
             // Do not dispose a menu while one of its click handlers is executing.
             icon.ContextMenuStrip = menu;
             if (old != null) dispatcher.BeginInvoke((Action)delegate { old.Dispose(); });

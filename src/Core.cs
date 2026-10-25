@@ -12,7 +12,7 @@ using System.Text;
 namespace SteamMonitorTray {
     [DataContract] public class Profile {
         [DataMember] public string Id = Guid.NewGuid().ToString("N");
-        [DataMember] public string Name = "默认监测";
+        [DataMember] public string Name = L.Text("默认监测");
         [DataMember] public bool Enabled = true;
         [DataMember] public string WorkingDirectory;
         [DataMember] public string ConfigFile;
@@ -24,6 +24,9 @@ namespace SteamMonitorTray {
     [DataContract] public class Settings {
         [DataMember] public int Version = 1;
         [DataMember] public string LaunchMode = "ManualWindowStartupTray";
+        [DataMember] public string Language = "auto";
+        [OnDeserializing] private void BeforeRead(StreamingContext context) { Language = "auto"; }
+        [OnDeserialized] private void AfterRead(StreamingContext context) { Language = L.Normalize(Language); }
         [DataMember] public string ShellPath;
         [DataMember] public string PythonPath;
         [DataMember] public bool AutomaticRestart = true;
@@ -38,6 +41,7 @@ namespace SteamMonitorTray {
         }
         public bool ShowOnLaunch(bool startup) { return LaunchMode == "AlwaysWindow" || (LaunchMode == "ManualWindowStartupTray" && !startup); }
         public void Validate() {
+            Language = L.Normalize(Language);
             if (Version != 1 || Profiles == null || RetrySeconds == null || RetrySeconds.Length != 3 || StableSeconds < 1 || StopTimeoutSeconds < 1) throw new InvalidDataException("设置格式无效。");
             if (LaunchMode != "AlwaysWindow" && LaunchMode != "AlwaysTray" && LaunchMode != "ManualWindowStartupTray") throw new InvalidDataException("启动显示策略无效。");
             foreach (int delay in RetrySeconds) if (delay < 1 || delay > 3600) throw new InvalidDataException("重试间隔必须为 1–3600 秒。");
@@ -47,6 +51,7 @@ namespace SteamMonitorTray {
         }
     }
     [DataContract] public class SessionSpec {
+        [DataMember] public string Language;
         [DataMember] public Profile Profile;
         [DataMember] public string ShellPath;
         [DataMember] public string ControllerPipe;

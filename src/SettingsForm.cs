@@ -30,10 +30,14 @@ namespace SteamMonitorTray {
         private readonly TableLayoutPanel editor;
         private readonly HelpLabel instructions;
         private readonly ToolTip tips = new ToolTip { AutoPopDelay = 15000, InitialDelay = 400, ShowAlways = true };
+        private readonly Dictionary<Control, string> textKeys = new Dictionary<Control, string>();
+        private readonly Dictionary<TextBox, string> tipKeys = new Dictionary<TextBox, string>();
+        private const string ModeHelp = "控制程序刚启动时是否显示 PowerShell 窗口；隐藏时只显示托盘图标。之后仍可从托盘显示或隐藏窗口。";
         private int selected = -1;
         public Settings Result { get; private set; }
         public SettingsForm(Settings settings, bool sessionsExist) {
             draft = Json.ReadText<Settings>(Json.Text(settings)); locked = sessionsExist;
+            L.SetLanguage(draft.Language);
             Text = "SteamMonitorTray 设置"; StartPosition = FormStartPosition.CenterScreen; MinimumSize = new Size(780, 580); Size = new Size(980, 810);
             Font = new Font("Microsoft YaHei UI", 9F); AutoScaleDimensions = new SizeF(96F, 96F); AutoScaleMode = AutoScaleMode.Dpi;
             TableLayoutPanel root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(14) };
@@ -41,11 +45,11 @@ namespace SteamMonitorTray {
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); Controls.Add(root);
             TableLayoutPanel global = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3, RowCount = 5 };
             for (int i = 0; i < 5; i++) global.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            global.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130)); global.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); global.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
+            global.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130)); global.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); global.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             mode.Items.AddRange(new object[] { "不隐藏", "仅开机自启动时隐藏", "每次启动时隐藏" });
             mode.SelectedIndex = draft.LaunchMode == "AlwaysWindow" ? 0 : (draft.LaunchMode == "AlwaysTray" ? 2 : 1);
             mode.Dock = DockStyle.Fill; global.Controls.Add(new Label { Text = "启动时隐藏窗口", AutoSize = true }, 0, 0); global.Controls.Add(mode, 1, 0);
-            tips.SetToolTip(mode, "控制程序刚启动时是否显示 PowerShell 窗口；隐藏时只显示托盘图标。之后仍可从托盘显示或隐藏窗口。");
+            tips.SetToolTip(mode, L.Text(ModeHelp));
             AddGlobal(global, "PowerShell", shell, draft.ShellPath, 1); AddGlobal(global, "Python", python, draft.PythonPath, 2);
             restart.Checked = draft.AutomaticRestart; global.Controls.Add(restart, 1, 3); root.Controls.Add(global, 0, 0);
             global.SetColumnSpan(restart, 2);
@@ -61,7 +65,7 @@ namespace SteamMonitorTray {
             add.Click += delegate { AddProfile(); }; remove.Click += delegate { RemoveProfile(); }; actions.Controls.Add(add); actions.Controls.Add(remove); left.Controls.Add(actions, 0, 1); profiles.Controls.Add(left, 0, 0);
             Panel scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(12, 0, 0, 0) };
             editor = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 3, RowCount = 13, Padding = new Padding(0, 0, 7, 0), Enabled = !locked };
-            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130)); editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); editor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72));
+            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130)); editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); editor.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             for (int i = 0; i < 13; i++) editor.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             string[] keys = { "Name", "WorkingDirectory", "ConfigFile", "EnvFile", "Executable" }, labels = { "配置名称", "工作目录", "配置文件（.conf）", "密钥文件（.env）", "监测程序（exe）" };
             string[] help = {
@@ -88,22 +92,41 @@ namespace SteamMonitorTray {
             Button save = new Button { Text = "保存", Width = 90 }, cancel = new Button { Text = "取消", DialogResult = DialogResult.Cancel, Width = 90 };
             save.Click += delegate { Save(); }; footer.Controls.Add(save); footer.Controls.Add(cancel); root.Controls.Add(footer, 0, 3); CancelButton = cancel;
             RebuildList();
+            CaptureText(this); L.LanguageChanged += ApplyLanguage; ApplyLanguage();
             Shown += delegate { Rectangle area = Screen.FromControl(this).WorkingArea; if (Height > area.Height) Height = area.Height; if (Width > area.Width) Width = area.Width; };
         }
-        private void TrackTip(TextBox box, string help) { box.TextChanged += delegate { tips.SetToolTip(box, help + (String.IsNullOrEmpty(box.Text) ? "" : Environment.NewLine + box.Text)); }; tips.SetToolTip(box, help); }
+        private void CaptureText(Control control) {
+            if (!(control is TextBox) && !(control is ListBox) && !(control is ComboBox) && control != instructions && !String.IsNullOrEmpty(control.Text)) textKeys[control] = control.Text;
+            foreach (Control child in control.Controls) CaptureText(child);
+        }
+        private void ApplyLanguage() {
+            draft.Language = L.Selection;
+            SuspendLayout();
+            foreach (KeyValuePair<Control, string> pair in textKeys) pair.Key.Text = L.Text(pair.Value);
+            int selectedMode = mode.SelectedIndex;
+            mode.Items.Clear(); mode.Items.AddRange(new object[] { L.Text("不隐藏"), L.Text("仅开机自启动时隐藏"), L.Text("每次启动时隐藏") }); mode.SelectedIndex = selectedMode;
+            RightToLeft = L.IsRtl ? RightToLeft.Yes : RightToLeft.No; RightToLeftLayout = L.IsRtl;
+            shell.RightToLeft = python.RightToLeft = RightToLeft.No;
+            foreach (KeyValuePair<string, TextBox> pair in fields) if (pair.Key != "Name") pair.Value.RightToLeft = RightToLeft.No;
+            foreach (TextBox box in tipKeys.Keys) UpdateTip(box);
+            tips.SetToolTip(mode, L.Text(ModeHelp)); UpdateInstructions();
+            ResumeLayout(true);
+        }
+        private void TrackTip(TextBox box, string help) { tipKeys[box] = help; box.TextChanged += delegate { UpdateTip(box); }; UpdateTip(box); }
+        private void UpdateTip(TextBox box) { tips.SetToolTip(box, L.Text(tipKeys[box]) + (String.IsNullOrEmpty(box.Text) ? "" : Environment.NewLine + box.Text)); }
         private void UpdateInstructions() {
             editor.Enabled = !locked && selected >= 0;
-            if (locked) instructions.Text = "全局选项仍可修改。要编辑账号配置，请先停止监测，并在所有已有 PowerShell 窗口中输入 exit 关闭会话，然后重新打开设置。";
-            else if (draft.Profiles.Count == 0) instructions.Text = "还没有添加账号配置。请点击左下方“添加已有配置…”，选择原来保存 steam_monitor.conf 的文件夹；大部分路径会自动填写。";
-            else instructions.Text = "选择左侧配置，确认右侧路径，勾选自动开始监测后保存。这里只引用原有文件，不复制密钥、监测账号或历史记录到项目中。";
+            if (locked) instructions.Text = L.Text("全局选项仍可修改。要编辑账号配置，请先停止监测，并在所有已有 PowerShell 窗口中输入 exit 关闭会话，然后重新打开设置。");
+            else if (draft.Profiles.Count == 0) instructions.Text = L.Text("还没有添加账号配置。请点击左下方“添加已有配置…”，选择原来保存 steam_monitor.conf 的文件夹；大部分路径会自动填写。");
+            else instructions.Text = L.Text("选择左侧配置，确认右侧路径，勾选自动开始监测后保存。这里只引用原有文件，不复制密钥、监测账号或历史记录到项目中。");
         }
         private void AddGlobal(TableLayoutPanel panel, string label, TextBox box, string value, int row) {
             panel.Controls.Add(new Label { Text = label, AutoSize = true }, 0, row); box.Text = value; box.Dock = DockStyle.Fill; panel.Controls.Add(box, 1, row);
-            Button browse = new Button { Text = "浏览" }; browse.Click += delegate { Browse(box, false); }; panel.Controls.Add(browse, 2, row);
+            Button browse = new Button { Text = "浏览", AutoSize = true }; browse.Click += delegate { Browse(box, false); }; panel.Controls.Add(browse, 2, row);
         }
         private void Browse(TextBox box, bool folder) {
             if (folder) { using (FolderBrowserDialog dialog = new FolderBrowserDialog()) { if (Directory.Exists(box.Text)) dialog.SelectedPath = box.Text; if (dialog.ShowDialog(this) == DialogResult.OK) box.Text = dialog.SelectedPath; } }
-            else { using (OpenFileDialog dialog = new OpenFileDialog { Filter = "所有文件|*.*", CheckFileExists = true }) { if (File.Exists(box.Text)) dialog.FileName = box.Text; if (dialog.ShowDialog(this) == DialogResult.OK) box.Text = dialog.FileName; } }
+            else { using (OpenFileDialog dialog = new OpenFileDialog { Filter = L.Text("所有文件|*.*"), CheckFileExists = true }) { if (File.Exists(box.Text)) dialog.FileName = box.Text; if (dialog.ShowDialog(this) == DialogResult.OK) box.Text = dialog.FileName; } }
         }
         private void CommitProfile() {
             if (selected < 0 || selected >= draft.Profiles.Count || locked) return;
@@ -121,21 +144,21 @@ namespace SteamMonitorTray {
             if (list.Items.Count > 0) list.SelectedIndex = 0; else SelectProfile();
         }
         private void AddProfile() {
-            CommitProfile(); using (FolderBrowserDialog dialog = new FolderBrowserDialog { Description = "选择原来保存 steam_monitor.conf 的文件夹（不是托盘程序源码目录）" }) {
+            CommitProfile(); using (FolderBrowserDialog dialog = new FolderBrowserDialog { Description = L.Text("选择原来保存 steam_monitor.conf 的文件夹（不是托盘程序源码目录）") }) {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 Profile p = Files.FromDirectory(dialog.SelectedPath);
-                if (!File.Exists(p.ConfigFile)) { MessageBox.Show(this, "这个文件夹中没有 steam_monitor.conf。请选择之前保存监测设置的文件夹。", "未找到监测配置", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
-                p.Name = "监测 " + (draft.Profiles.Count + 1); if (!File.Exists(p.EnvFile)) p.EnvFile = "";
+                if (!File.Exists(p.ConfigFile)) { MessageBox.Show(this, L.Text("这个文件夹中没有 steam_monitor.conf。请选择之前保存监测设置的文件夹。"), L.Text("未找到监测配置"), MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                p.Name = L.Text("监测 {0}", draft.Profiles.Count + 1); if (!File.Exists(p.EnvFile)) p.EnvFile = "";
                 draft.Profiles.Add(p); RebuildList(); list.SelectedIndex = draft.Profiles.Count - 1;
             }
         }
         private void RemoveProfile() { if (selected < 0) return; draft.Profiles.RemoveAt(selected); RebuildList(); }
-        protected override void Dispose(bool disposing) { if (disposing) tips.Dispose(); base.Dispose(disposing); }
+        protected override void Dispose(bool disposing) { if (disposing) { L.LanguageChanged -= ApplyLanguage; tips.Dispose(); } base.Dispose(disposing); }
         private void Save() {
             CommitProfile(); draft.ShellPath = shell.Text.Trim(); draft.PythonPath = python.Text.Trim(); draft.AutomaticRestart = restart.Checked;
             draft.LaunchMode = new string[] { "AlwaysWindow", "ManualWindowStartupTray", "AlwaysTray" }[mode.SelectedIndex];
             try { Validation.All(draft); Result = draft; DialogResult = DialogResult.OK; Close(); }
-            catch (Exception ex) { MessageBox.Show(this, Program.SafeError(ex), "检查设置", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { MessageBox.Show(this, Program.SafeError(ex), L.Text("检查设置"), MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
     }
 }

@@ -68,6 +68,7 @@ internal static class Tests {
         }
     }
     private static void OpenManager(Settings settings, string suffix) {
+        settings.Language = "zh-Hans";
         Assembly app = Assembly.LoadFrom(Path.Combine(Files.Bin, "SteamMonitorTray.exe")); managerType = app.GetType("SteamMonitorTray.TrayContext");
         manager = Activator.CreateInstance(managerType, new object[] { settings, true, Path.Combine(root, suffix) });
     }
@@ -105,6 +106,7 @@ internal static class Tests {
             Files.EnsurePrivateDirectory(root);
             Settings s = Settings.Defaults();
             Assert(File.Exists(s.ShellPath) && File.Exists(s.PythonPath), "dependencies discovered");
+            LocalizationTests.Run(root);
             StartupTests.Run(root);
             Assert(s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "default display policy");
             s.LaunchMode = "AlwaysTray"; Assert(!s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "always tray policy");

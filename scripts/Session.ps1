@@ -2,6 +2,7 @@ param([Parameter(Mandatory=$true)][string]$SessionFile)
 $ErrorActionPreference = 'Stop'
 Add-Type -Path (Join-Path $PSScriptRoot 'SteamMonitorTray.Core.dll')
 $global:SmtSession = Get-Content -LiteralPath $SessionFile -Raw -Encoding UTF8 | ConvertFrom-Json
+[SteamMonitorTray.L]::SetLanguage($global:SmtSession.Language)
 [SteamMonitorTray.SessionBridge]::Connect($global:SmtSession.ShellPipe, $global:SmtSession.Token)
 Set-Location -LiteralPath $global:SmtSession.Profile.WorkingDirectory
 Import-Module PSReadLine -ErrorAction Stop
@@ -56,4 +57,4 @@ Set-PSReadLineKeyHandler -Chord F24 -BriefDescription SteamMonitorTray -ScriptBl
     }
     [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
 }
-Write-Host 'SteamMonitorTray — 使用 steam_monitor 启动，Ctrl+C 停止，最小化收进托盘。' -ForegroundColor Cyan
+Write-Host ([SteamMonitorTray.L]::Text('SteamMonitorTray — 使用 steam_monitor 启动，Ctrl+C 停止，最小化收进托盘。', @())) -ForegroundColor Cyan
