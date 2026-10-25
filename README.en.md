@@ -2,7 +2,7 @@
   <h1>SteamMonitorTray</h1>
   <p><strong>A Windows tray companion built for <a href="https://github.com/misiektoja/steam_monitor">misiektoja/steam_monitor</a>.</strong></p>
   <p>Native PowerShell · Multiple profiles · Windows startup · Six interface languages</p>
-  <p><a href="README.md">简体中文</a> · <strong>English</strong></p>
+  <p><strong>English</strong> · <a href="README.md">简体中文</a></p>
 </div>
 
 SteamMonitorTray manages real PowerShell sessions around the existing `steam_monitor` command. Hide a window without interrupting monitoring, restore the same output later, and stop gracefully from the tray.
@@ -140,7 +140,7 @@ Tests use local fake monitors and isolated configuration/startup metadata. They 
 
 Real sign-out/sign-in startup behavior should also be checked manually. Tests never sign you out or restart your computer.
 
-The repository homepage opens in Chinese by default. Select **English** to show this guide on the same page and collapse Chinese; select **简体中文** to switch back. The code listing stays on the repository homepage. This uses native exclusive disclosure sections in modern browsers. Older browsers can expand or collapse each language manually using its disclosure arrow.
+The repository homepage displays English first and expands it by default. Select **简体中文** at the top to read Chinese on the same page; select **English** to return. The code listing stays on the repository homepage. This uses native exclusive disclosure sections in modern browsers. Reloading does not preserve the selected language. If a language link does not respond after a reload, use the disclosure arrow beside the language heading to expand it directly. Older browsers can expand or collapse each language manually.
 
 For documentation updates, edit this file as the English source, then run `python scripts\SyncReadmeEnglish.py` to update the homepage's English section. The script changes only the Chinese navigation link to an in-page target; all other English content stays identical. This standalone file is also included in the portable package; the homepage offers only in-page language links.
 
