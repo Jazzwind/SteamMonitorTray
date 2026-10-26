@@ -70,6 +70,36 @@ An optional command-line import is available while the app is not running:
 
 Add `-NoStartup` to import without registering Windows startup. The example path is fictional.
 
+### View, stop and edit settings
+
+Settings have two tabs: **General** contains window visibility, Windows startup, language and retry behavior; **Monitoring profiles** contains the PowerShell/Python runtime paths, profile paths, editing controls and configuration checks. Existing sessions and first-run profile import open the profiles tab; otherwise General opens.
+
+**Start with Windows** and **Language** are synchronized with the tray and take effect immediately, without stopping monitoring. The startup checkbox reflects shortcut registration and shows a warning when Task Manager has disabled it. Changing the checkbox never overrides that disable. Cancel does not undo these two immediate actions; other options remain drafts until saved.
+
+Settings use a consistent 11-point base font, larger profile rows and DPI-aware label widths. Long content scrolls inside the page while action buttons remain available. When sessions exist, profile paths are read-only but retain normal contrast and can be copied; global startup-display and retry options remain editable.
+
+Select **Stop monitoring and edit** to pause automatic retries, send real Ctrl+C to running monitors, wait for cleanup and close their dedicated PowerShell sessions normally. The same settings window then unlocks. It is not necessary to type `exit` yourself. Monitoring start actions are disabled while editing. Opening Settings again brings the existing window forward.
+
+If a session is busy, has unsubmitted input or does not stop before the timeout (30 seconds by default), the app keeps the page locked, identifies the remaining sessions and restores their consoles. Finish or clear the command and use **Retry entering edit mode**. Other PowerShell commands are not interrupted and no process is forcibly terminated.
+
+| Action after stopping to edit | Result |
+| --- | --- |
+| Save and resume monitoring | Save, then start only profiles that were running or starting before the stop and are still present, enabled and valid. Previously stopped profiles stay stopped. |
+| Save only | Save and leave monitoring stopped. |
+| Cancel or close | Discard the draft and leave stopped monitoring stopped. Sessions already stopped or closed are not automatically recreated. |
+
+The per-profile automatic-start checkbox controls monitoring when the application launches; Windows sign-in startup is a separate shared setting in General and the tray. Changing the launch-display setting does not immediately show or hide existing windows. Sessions resumed after editing preserve their previous visible or hidden state.
+
+This page registers existing configuration paths. Monitoring features and notification options are edited in the upstream `.conf`; credentials remain in `.env`. Adding another account normally means preparing a separate upstream configuration, then adding it here. Existing paths usually require no changes unless files move or Python/steam_monitor is reinstalled. The app does not rewrite these files.
+
+### Missing files and configuration checks
+
+The page identifies a missing working folder, `.conf`, explicitly selected `.env` or monitor executable beside the relevant field, and marks the profile list. An empty `.env` field is allowed when using environment variables. Missing PowerShell and Python executables are reported separately. **Check configurations** checks all profiles for missing files, static configuration errors and conflicting output paths in the background, then reports passed and failed counts with per-profile details. The explanation is shown beside the action. Checks do not start monitoring, execute the `.conf` or send Steam/Discord requests or notifications.
+
+Missing profiles remain registered for repair. Existing broken profiles do not prevent saving unrelated global options or starting other valid profiles. New or changed enabled paths must pass validation before saving; conflicting outputs introduced by an edit are rejected. Disabled profiles may be retained for later repair.
+
+Paths are checked again before a tray start. Lightweight existence checks during operation provide warnings without automatically stopping an existing session or replacing paths. A monitor may continue after a file disappears, depending on when the upstream program next accesses it; a running-process indicator is not a guarantee that file output or network requests are succeeding. After repairing paths, use **Check configurations** and start monitoring again when appropriate.
+
 ## Native tray menu and display scaling
 
 Version 1.2.0 uses Windows-native popup menus, following the same Win32 approach as AKKO Link Monitor, with Per-Monitor V2 DPI awareness. Windows draws the menu font, spacing, checkmarks and disabled states. The tray icon keeps its colored status indicators; menu status is shown as text using system colors. The former menu hover hints are replaced by startup status text and operation notices.
@@ -107,7 +137,7 @@ Both entry points start enabled profiles. Hidden sessions continue monitoring. T
 
 ## Language
 
-The **Language** submenu follows **Hide window on startup**. Its default is **Automatic (system language)**. Available languages are 简体中文, English, Français, Русский, Español and العربية: the [six official UN languages](https://www.un.org/our-work/official-languages).
+The **Language** submenu follows **Hide window on startup**; the same selector is available in **Settings → General**. Its default is **Automatic (system language)**. Available languages are 简体中文, English, Français, Русский, Español and العربية: the [six official UN languages](https://www.un.org/our-work/official-languages).
 
 Automatic selection follows the ordered Windows UI language preferences, not regional number/date formatting. Chinese variants use Simplified Chinese; unsupported language lists fall back to English. Manual selection is saved locally and immediately updates tray controls and open settings windows. Arabic uses right-to-left layout while paths remain left-to-right.
 
@@ -152,10 +182,14 @@ Run native integration tests from an ordinary interactive Windows desktop, not a
 .\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python -m unittest discover -s tests -p 'test_*.py'
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.2.1
+.\package.ps1 -Version 1.3.0
 ```
 
 Tests use local fake monitors and isolated configuration/startup metadata. They do not call Steam or Discord. Release ZIPs in `dist` use a strict runtime allowlist and include both language guides. Privacy scanning covers source, staged files, reachable Git history and release archives.
+
+Font regression tests also start a fresh process in the real tray initialization order and inspect the native fonts used by text boxes, lists and drop-downs. Checking managed font properties or bitmap previews alone can miss startup DPI errors.
+
+Resize regressions check native header row spacing, fixed footer bounds and pause/resume of background path checks during an interactive resize loop. A local timing probe reports repeated width-change costs; those timings are not a guarantee of drag frame rates on every system.
 
 Packaging builds into its own staging directory, so it does not overwrite a running copy in `bin`. A test-only interactive preview is available after building tests: `artifacts\native-menu\bin\SteamMonitorTray.Tests.exe --preview`. Its profile is disabled and startup registration is isolated; the preview closes automatically after three minutes.
 
@@ -257,6 +291,36 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 从便携发布包使用时，程序就在解压目录，直接运行 `SteamMonitorTray.exe`；无需构建。
 
+## 设置页查看与编辑
+
+设置页分为两个页签：**“常规”** 放置窗口显示方式、开机自启动、语言和重试；**“监测配置”** 放置 PowerShell / Python 运行环境路径、账号路径、编辑操作和配置检查。已有会话或首次添加配置时默认进入“监测配置”，其他情况进入“常规”。
+
+**开机自启动和语言与托盘双向同步，即时生效，无需停止监测。** 自启动勾选反映快捷方式是否注册；被任务管理器禁用时，会显示提醒，程序不会绕过禁用。取消不会撤销这两个即时操作，其余选项仍需保存才生效，页面中有明确说明。
+
+设置页统一使用 11pt 基础字号，加大配置列表行高，并按 DPI 和所选语言调整标签宽度。内容较长时在页面内部滚动，底部操作按钮保持可用。存在会话时，账号路径为只读，但保持正常文字颜色，可以选择、复制；全局显示方式和重试选项仍可修改。
+
+点击 **“停止监测并编辑”**，程序会暂停自动重试，向正在监测的实例发送真正的 Ctrl+C，等待清理完成，再正常关闭它们的专用 PowerShell 会话，随后在当前页面解锁编辑。无需自己输入 `exit`。编辑期间禁用启动监测，再次打开设置会还原已有设置窗口。
+
+如果会话正在执行其他命令、有未提交输入，或超过停止超时（默认 30 秒），页面继续锁定，并列出未关闭的会话、显示对应控制台。完成或清空命令后，点击 **“重试进入编辑模式”**。程序不会中断其他 PowerShell 命令，也不会强制结束进程。
+
+| 停止并编辑后的操作 | 结果 |
+| --- | --- |
+| 保存并恢复监测 | 保存后，只恢复进入编辑前正在运行或启动中，且仍保留、启用并校验通过的配置；此前已停止的配置保持停止。 |
+| 仅保存 | 保存设置，监测保持停止。 |
+| 取消或关闭 | 放弃本次修改，已停止的监测保持停止；已经关闭的会话不会自动重建。 |
+
+每份配置中的自动监测勾选决定打开托盘程序时是否开始监测；Windows 登录自启动是“常规”页签与托盘共用的另一项设置。修改“启动时隐藏窗口”不会立即显示或隐藏已有窗口；编辑后恢复会话会保留它原先显示或隐藏的状态。
+
+这个页面登记已有配置的路径。监测项目、通知开关仍在上游 `.conf` 中修改，密钥仍保存在 `.env` 中。新增账号时，通常先准备另一份上游配置，再添加到这里。已有路径通常无需修改，除非移动了文件或重新安装 Python、steam_monitor；托盘不会改写这些原文件。
+
+## 文件缺失与检查配置
+
+工作目录、`.conf`、明确指定的 `.env` 或监测程序缺失时，会在对应字段旁显示具体错误，并标记左侧配置。使用环境变量时，`.env` 路径可以留空。PowerShell、Python 程序缺失会单独提示。**“检查配置”** 在后台检查所有配置的文件存在性、静态配置格式和输出文件冲突，汇总通过与需处理数量，并显示每份配置的具体问题；按钮旁附有检查范围说明。检查不会启动监测、执行 `.conf` 中的代码，也不会访问 Steam、Discord 或发送通知。
+
+原有失效配置保留以供修复，不妨碍保存无关的全局选项，也不阻止其他有效配置启动。新增或改动的已启用路径必须在保存前通过检查；编辑引入的重复输出文件会被拦截。未启用的配置可以保留，稍后修复。
+
+从托盘启动前会重新检查路径；运行期间的轻量存在性检查只提示问题，不会自动停止已有会话或替换路径。文件在运行中消失后，原监测进程是否继续正常工作，取决于上游何时再次访问它；“进程运行”不代表日志写入和网络请求一定成功。修复路径后可点击“检查配置”，再按需要启动监测。
+
 ## 原生托盘菜单与显示缩放
 
 1.2.0 使用 Windows 原生弹出菜单，参考 AKKO Link Monitor 的 Win32 菜单机制，并启用 Per-Monitor V2 DPI 感知。菜单字体、间距、勾选和禁用状态由 Windows 绘制。托盘图标继续用颜色表示状态，菜单状态使用系统颜色和文字；原来的菜单悬停说明改由自启动状态文字及操作提示承载。
@@ -300,7 +364,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 ## 语言
 
-托盘 **“启动时隐藏窗口”** 下方新增 **“语言”** 菜单，默认选中 **“自动（跟随系统）”**。提供简体中文、English、Français、Русский、Español、العربية，覆盖联合国目前的 [六种官方语言](https://www.un.org/our-work/official-languages)。
+托盘 **“启动时隐藏窗口”** 下方有 **“语言”** 菜单，设置页 **“常规”** 页签也提供同一选项，默认选中 **“自动（跟随系统）”**。提供简体中文、English、Français、Русский、Español、العربية，覆盖联合国目前的 [六种官方语言](https://www.un.org/our-work/official-languages)。
 
 自动选择按照 Windows 的界面语言偏好顺序匹配，不使用地区的数字或日期格式；中文地区变体使用简体中文，没有匹配语言时使用英语。手动选择会保存到本地，并立即更新托盘和已打开的设置窗口。阿拉伯语采用从右向左布局，文件路径仍从左向右显示。
 
@@ -380,10 +444,14 @@ GitHub 首页将英文放在最前面并默认展开。点击顶部 **简体中�
 ```powershell
 .\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.2.1
+.\package.ps1 -Version 1.3.0
 ```
 
 测试只运行本地 FakeMonitor，不使用真实配置，不连接 Steam 或 Discord。覆盖隐藏启动、真实 Ctrl+C 清理、实例隔离、输入保留、原生提示符、手动启停同步、输出冲突、管理器重试上限和正常退出。测试产物位于已忽略的 `artifacts` 中。
+
+字体回归会在独立新进程中按真实托盘启动顺序，检查输入框、列表和下拉框实际使用的原生字体。仅检查托管字号属性或位图预览，可能漏掉启动时的 DPI 初始化问题。
+
+缩放回归会检查顶部实际行间距、底部按钮区域，以及交互调整窗口期间后台路径检查的暂停和恢复。另有本地计时探针记录连续改宽度的耗时；这些数据不等同于所有设备上的实际鼠标拖动帧率。
 
 发布 ZIP 位于 `dist`。这是便携运行包，Python 和 `steam_monitor` 需由使用者自行安装。构建脚本兼容 Windows PowerShell 5.1；复制到发布目录的会话脚本使用 UTF-8 BOM，避免中文乱码。
 

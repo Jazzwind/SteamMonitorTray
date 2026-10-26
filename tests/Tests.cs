@@ -24,6 +24,7 @@ internal static class Tests {
     private static void ManagerAction(string method, object argument) {
         managerType.GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance).Invoke(manager, argument == null ? null : new object[] { argument });
     }
+    private static void ManagerStart(Profile p) { managerType.GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(manager, new object[] { ManagedRuntime(p), true }); }
     private static bool ManagerAlive(Profile p) { object r = ManagedRuntime(p); return (bool)r.GetType().GetProperty("Alive").GetValue(r, null); }
     private static bool AnyManagerAlive() {
         if (manager == null) return false;
@@ -90,8 +91,9 @@ internal static class Tests {
     }
     private static void OpenManager(Settings settings, string suffix) {
         settings.Language = "zh-Hans";
-        Assembly app = Assembly.LoadFrom(Path.Combine(Files.Bin, "SteamMonitorTray.exe")); managerType = app.GetType("SteamMonitorTray.TrayContext");
-        manager = Activator.CreateInstance(managerType, new object[] { settings, true, Path.Combine(root, suffix) });
+        string dataRoot = Path.Combine(root, suffix);
+        StartupRegistration registration = new StartupRegistration(Path.Combine(dataRoot, "test-startup.lnk"), Path.Combine(Files.Bin, "SteamMonitorTray.exe"), @"Software\SteamMonitorTray\Tests\" + Guid.NewGuid().ToString("N"), "test-startup.lnk");
+        manager = new TrayContext(settings, true, dataRoot, registration); managerType = manager.GetType();
     }
     private static void Assert(bool condition, string label) { if (!condition) throw new Exception(label); Console.WriteLine("PASS " + label); }
     private static bool Has(SessionClient c, string kind, int after) { lock (messages) return messages[c].Skip(after).Any(m => m.Kind == kind); }
@@ -129,6 +131,77 @@ internal static class Tests {
             return process.ExitCode == 0;
         }
     }
+    private static T UiField<T>(object value, string name) { return (T)value.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value); }
+    private static void AwaitSettings(System.Threading.Tasks.Task task) {
+        Wait(delegate { return task.IsCompleted; }, "settings async save", 15); task.GetAwaiter().GetResult();
+    }
+    private static void CheckSettingsWorkflow() {
+        Settings s = Settings.Defaults(); s.LaunchMode = "AlwaysTray"; s.RetrySeconds = new int[] { 1, 1, 1 };
+        Profile a = Fixture("edit-running", false), b = Fixture("edit-stopped", false), c = Fixture("edit-disabled", false); c.Enabled = false;
+        s.Profiles.Add(a); s.Profiles.Add(b); s.Profiles.Add(c); OpenManager(s, "edit-manager-data"); TrayContext context = (TrayContext)manager;
+        Wait(delegate { return ManagedStatus(a) == "监测进程运行" && ManagedStatus(b) == "监测进程运行" && File.Exists(Path.Combine(a.WorkingDirectory, "fixture.starts")) && File.Exists(Path.Combine(b.WorkingDirectory, "fixture.starts")); }, "start editing workflow fixtures", 15);
+        ManagerAction("Stop", ManagedRuntime(b));
+        Wait(delegate { return ManagedStatus(b) == "已停止" && (bool)ManagedRuntime(b).GetType().GetField("Prompt").GetValue(ManagedRuntime(b)); }, "stopped fixture keeps idle PowerShell", 10);
+        SettingsForm form = context.OpenSettings();
+        Assert(Object.ReferenceEquals(form, context.OpenSettings()), "only one settings window is created");
+        Assert(form.IsLocked && UiField<Dictionary<string, TextBox>>(form, "fields")["ConfigFile"].ReadOnly, "live sessions open settings in copyable view mode");
+        form.ShowGeneral(); UiField<ComboBox>(form, "language").SelectedIndex = 2; UiField<CheckBox>(form, "startupCheck").Checked = true;
+        Assert(ManagedStatus(a) == "监测进程运行" && !File.Exists(Path.Combine(a.WorkingDirectory, "fixture.cleanup")), "general startup and language changes do not stop active monitoring");
+        Assert(File.Exists(Path.Combine(root, "edit-manager-data", "test-startup.lnk")), "running-session settings startup action remains isolated to fixture");
+        form.ShowProfiles();
+        SessionClient client = (SessionClient)ManagedRuntime(a).GetType().GetField("Client").GetValue(ManagedRuntime(a));
+        client.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(client.Window); }, "show monitor before edit preparation", 5);
+        Assert(Selection(client, true), "select output before stop-and-edit");
+        UiField<Button>(form, "prepare").PerformClick();
+        Assert(!context.CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Enabled, "tray cannot start monitors during edit preparation");
+        Wait(delegate { return !form.IsLocked && !form.IsPreparing && !AnyManagerAlive(); }, "stop, close all shells and unlock same settings window", 15);
+        Assert(File.ReadAllText(Path.Combine(a.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "stop-and-edit performs real Ctrl+C cleanup");
+        UiField<Dictionary<string, TextBox>>(form, "fields")["Name"].Text = "Saved fixture name";
+        AwaitSettings(form.SaveAsync(true));
+        Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 2; }, "save resumes originally running profile", 15);
+        SessionClient resumedClient = (SessionClient)ManagedRuntime(a).GetType().GetField("Client").GetValue(ManagedRuntime(a));
+        Assert(Native.IsWindowVisible(resumedClient.Window), "resume preserves visible state instead of applying tray-only launch policy");
+        Assert(!ManagerAlive(b) && File.ReadAllLines(Path.Combine(b.WorkingDirectory, "fixture.starts")).Length == 1 && !File.Exists(Path.Combine(c.WorkingDirectory, "fixture.starts")), "resume leaves stopped and disabled profiles stopped");
+        Assert(UiField<Settings>(context, "settings").Profiles[0].Name == "Saved fixture name", "edited profile saved in manager");
+        form = context.OpenSettings(); UiField<Button>(form, "prepare").PerformClick();
+        Wait(delegate { return !form.IsLocked && !AnyManagerAlive(); }, "prepare save-only workflow", 15);
+        AwaitSettings(form.SaveAsync(false));
+        Stopwatch quiet = Stopwatch.StartNew(); while (quiet.Elapsed.TotalSeconds < 2) { Application.DoEvents(); Thread.Sleep(20); }
+        Assert(!AnyManagerAlive() && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 2, "save only leaves monitoring stopped and cancels retries");
+        ManagerStart(a); Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length >= 3; }, "restart before cancel test", 10);
+        form = context.OpenSettings(); UiField<Button>(form, "prepare").PerformClick();
+        Wait(delegate { return !form.IsLocked && !AnyManagerAlive(); }, "prepare cancel workflow", 15);
+        UiField<Dictionary<string, TextBox>>(form, "fields")["Name"].Text = "Unsaved fixture name"; form.Close(); Application.DoEvents();
+        Assert(UiField<Settings>(context, "settings").Profiles[0].Name == "Saved fixture name" && !AnyManagerAlive(), "cancel discards draft without resuming monitoring");
+        ManagerStart(a); Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length >= 4; }, "restart before busy prompt test", 10);
+        ManagerAction("Stop", ManagedRuntime(a));
+        Wait(delegate { return (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "idle prompt for input preservation", 10);
+        client = (SessionClient)ManagedRuntime(a).GetType().GetField("Client").GetValue(ManagedRuntime(a));
+        string marker = Path.Combine(a.WorkingDirectory, "edit-preserved.txt");
+        Input(client, "Set-Content -LiteralPath '" + marker.Replace("'", "''") + "' -Value preserved", false); Thread.Sleep(200);
+        form = context.OpenSettings(); UiField<Button>(form, "prepare").PerformClick();
+        Wait(delegate { return !form.IsPreparing; }, "unsubmitted input blocks edit preparation", 10);
+        Assert(form.IsLocked && client.Alive && !File.Exists(marker), "busy edit keeps shell alive and does not replace input");
+        Input(client, "\n", false); Wait(delegate { return File.Exists(marker) && (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "original command remains executable", 10);
+        Input(client, "Start-Sleep -Seconds 2\n", false);
+        Wait(delegate { return !(bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "arbitrary command executing", 5);
+        UiField<Button>(form, "prepare").PerformClick();
+        managerType.GetField("editDeadline", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(manager, DateTime.UtcNow.AddSeconds(-1)); ManagerAction("Tick", null);
+        Assert(form.IsLocked && !form.IsPreparing && client.Alive, "edit timeout keeps active command and offers retry");
+        Wait(delegate { return (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "arbitrary command completes normally", 5);
+        UiField<Button>(form, "prepare").PerformClick();
+        Wait(delegate { return !form.IsLocked && !AnyManagerAlive(); }, "edit retry succeeds after command completes", 10); form.Close();
+        ManagerStart(a);
+        Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length >= 5; }, "ready for delayed-start cancellation regression", 10);
+        object pending = ManagedRuntime(a); Type runtimeType = pending.GetType();
+        runtimeType.GetField("Running").SetValue(pending, false); runtimeType.GetField("StartSent").SetValue(pending, true);
+        runtimeType.GetField("Desired").SetValue(pending, false); runtimeType.GetField("Stopping").SetValue(pending, true);
+        // A stop can be requested before a queued Started acknowledgement arrives.
+        managerType.GetMethod("Receive", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(manager, new object[] { pending, new Wire("Started", "") });
+        Wait(delegate { return (bool)runtimeType.GetField("Prompt").GetValue(pending); }, "delayed-start cancellation returns prompt", 10);
+        Assert(File.ReadAllText(Path.Combine(a.WorkingDirectory, "fixture.cleanup")).Contains("count=1"), "pending stop sends exactly one Ctrl+C after Started");
+        ManagerAction("Quit", null); Wait(delegate { return !AnyManagerAlive(); }, "workflow manager closes its final PowerShell session", 10); Application.DoEvents(); manager = null;
+    }
     [STAThread] public static int Main(string[] args) {
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         if (args.Length == 1 && args[0] == "--preview") return UiPreview.Run();
@@ -136,10 +209,24 @@ internal static class Tests {
         try {
             root = Path.Combine(Path.GetDirectoryName(Files.Bin.TrimEnd(Path.DirectorySeparatorChar)), "artifacts", "tests", Guid.NewGuid().ToString("N"));
             Files.EnsurePrivateDirectory(root);
+            if (args.Length == 1 && args[0] == "--resize-benchmark") { ResizeTests.Run(root, false); return 0; }
+            if (args.Length == 1 && args[0] == "--resize-test") { ResizeTests.Run(root, true); return 0; }
+            if (args.Length == 1 && args[0] == "--font-startup") { LocalizationTests.FreshStartup(root); return 0; }
+            if (args.Length == 1 && args[0] == "--settings-only") { LocalizationTests.Run(root); SettingsTests.Run(root); return 0; }
+            if (args.Length == 1 && args[0] == "--workflow-only") { CheckSettingsWorkflow(); return 0; }
             Settings s = Settings.Defaults();
             Assert(File.Exists(s.ShellPath) && File.Exists(s.PythonPath), "dependencies discovered");
+            ProcessStartInfo fontProbe = new ProcessStartInfo(Path.Combine(Files.Bin, "SteamMonitorTray.Tests.exe"), "--font-startup") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+            using (Process process = Process.Start(fontProbe)) {
+                var output = process.StandardOutput.ReadToEndAsync(); var errors = process.StandardError.ReadToEndAsync();
+                Assert(process.WaitForExit(15000), "fresh-process font probe completes");
+                Console.Write(output.Result); if (process.ExitCode != 0) Console.Error.Write(errors.Result);
+                Assert(process.ExitCode == 0, "real tray startup uses correct native font metrics in a fresh process");
+            }
             NativeMenuTests.Run();
             LocalizationTests.Run(root);
+            SettingsTests.Run(root);
+            ResizeTests.Run(root, true);
             StartupTests.Run(root);
             Assert(s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "default display policy");
             s.LaunchMode = "AlwaysTray"; Assert(!s.ShowOnLaunch(false) && !s.ShowOnLaunch(true), "always tray policy");
@@ -243,6 +330,7 @@ internal static class Tests {
             ManagerAction("Quit", null); Wait(delegate { return !ManagerAlive(quitFixture); }, "selected running manager gracefully exits", 15);
             Assert(File.ReadAllText(Path.Combine(quitFixture.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "tray quit releases selection and completes real Ctrl+C cleanup");
             Application.DoEvents(); manager = null;
+            CheckSettingsWorkflow();
             Console.WriteLine("RESULT all checks passed"); return 0;
         } catch (Exception ex) { Console.Error.WriteLine("FAIL " + ex.Message); return 1; }
         finally {

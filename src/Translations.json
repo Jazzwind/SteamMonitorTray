@@ -1,4 +1,71 @@
 {
+  "常规": ["General", "Général", "Общие", "General", "عام"],
+  "监测配置": ["Monitoring profiles", "Profils de surveillance", "Профили мониторинга", "Perfiles de vigilancia", "ملفات المراقبة"],
+  "登录 Windows 后自动启动": ["Start automatically when signing in to Windows", "Démarrer à l’ouverture de session Windows", "Запускать при входе в Windows", "Iniciar al entrar en Windows", "التشغيل تلقائياً عند تسجيل الدخول إلى Windows"],
+  "运行环境": ["Runtime environment", "Environnement d’exécution", "Среда выполнения", "Entorno de ejecución", "بيئة التشغيل"],
+  "开机自启动和语言即时生效；其余选项保存后生效。": [
+    "Start with Windows and language changes take effect immediately. Save to apply the other options.",
+    "Le démarrage avec Windows et la langue s’appliquent immédiatement. Enregistrez pour appliquer les autres options.",
+    "Автозапуск и язык меняются сразу. Остальные параметры применяются после сохранения.",
+    "El inicio con Windows y el idioma se aplican de inmediato. Guarde para aplicar las demás opciones.",
+    "تُطبَّق تغييرات بدء التشغيل مع Windows واللغة فوراً. احفظ لتطبيق الخيارات الأخرى."
+  ],
+  "检查配置": ["Check configurations", "Vérifier les configurations", "Проверить настройки", "Comprobar configuraciones", "فحص الإعدادات"],
+  "检查所有配置的文件路径、配置格式和输出文件冲突，不会启动监测或发送通知。": [
+    "Check all profiles for missing files, configuration errors and conflicting output paths. This does not start monitoring or send notifications.",
+    "Vérifiez les fichiers, le format des configurations et les conflits de sortie de tous les profils, sans démarrer la surveillance ni envoyer de notification.",
+    "Проверка файлов, формата настроек и конфликтов выходных путей всех профилей. Мониторинг не запускается, уведомления не отправляются.",
+    "Comprueba archivos, formato y conflictos de salida de todos los perfiles. No inicia la vigilancia ni envía notificaciones.",
+    "يفحص الملفات وتنسيق الإعدادات وتعارض مسارات الإخراج لجميع الملفات، دون بدء المراقبة أو إرسال إشعارات."
+  ],
+  "检查完成：{0} 个配置通过，{1} 个需要处理。": [
+    "Check complete: {0} profiles passed; {1} need attention.",
+    "Vérification terminée : {0} profils valides, {1} à corriger.",
+    "Проверка завершена: успешно — {0}, требуют внимания — {1}.",
+    "Comprobación terminada: {0} perfiles correctos; {1} requieren atención.",
+    "اكتمل الفحص: نجح {0} من الملفات؛ ويحتاج {1} إلى المعالجة."
+  ],
+  "PowerShell 程序不存在。": ["PowerShell executable not found.", "Exécutable PowerShell introuvable.", "Программа PowerShell не найдена.", "No se encuentra el ejecutable de PowerShell.", "لم يتم العثور على برنامج PowerShell."],
+  "Python 程序不存在。": ["Python executable not found.", "Exécutable Python introuvable.", "Программа Python не найдена.", "No se encuentra el ejecutable de Python.", "لم يتم العثور على برنامج Python."],
+  "工作目录不存在。": ["Working directory not found.", "Dossier de travail introuvable.", "Рабочая папка не найдена.", "No se encuentra la carpeta de trabajo.", "لم يتم العثور على مجلد العمل."],
+  "配置文件不存在。": ["Configuration file not found.", "Fichier de configuration introuvable.", "Файл конфигурации не найден.", "No se encuentra el archivo de configuración.", "لم يتم العثور على ملف الإعدادات."],
+  "密钥文件不存在。": ["Environment file not found.", "Fichier d’environnement introuvable.", "Файл окружения не найден.", "No se encuentra el archivo de entorno.", "لم يتم العثور على ملف البيئة."],
+  "监测程序不存在。": ["Monitor executable not found.", "Exécutable de surveillance introuvable.", "Программа мониторинга не найдена.", "No se encuentra el ejecutable del monitor.", "لم يتم العثور على برنامج المراقبة."],
+  "（文件缺失）": [" (missing files)", " (fichiers manquants)", " (нет файлов)", " (faltan archivos)", " (ملفات مفقودة)"],
+  "（配置需检查）": [" (check configuration)", " (configuration à vérifier)", " (проверьте настройки)", " (revise la configuración)", " (تحقق من الإعدادات)"],
+  "重新检查": ["Recheck", "Revérifier", "Проверить снова", "Comprobar de nuevo", "إعادة الفحص"],
+  "保存并恢复监测": ["Save and resume monitoring", "Enregistrer et reprendre", "Сохранить и продолжить", "Guardar y reanudar", "حفظ واستئناف المراقبة"],
+  "仅保存": ["Save only", "Enregistrer seulement", "Только сохранить", "Solo guardar", "حفظ فقط"],
+  "停止监测并编辑": ["Stop monitoring and edit", "Arrêter et modifier", "Остановить и изменить", "Detener y editar", "إيقاف المراقبة والتعديل"],
+  "重试进入编辑模式": ["Retry entering edit mode", "Réessayer la modification", "Повторить переход к правке", "Reintentar modo de edición", "إعادة محاولة وضع التعديل"],
+  "查看模式：路径可以复制。点击“停止监测并编辑”后，程序会正常停止全部监测并关闭专用会话，再解锁本页。": [
+    "View mode: paths can be copied. Select Stop monitoring and edit to stop all monitors gracefully, close their dedicated sessions and unlock this page.",
+    "Mode consultation : les chemins peuvent être copiés. Arrêter et modifier arrête normalement les surveillances, ferme leurs sessions et déverrouille cette page.",
+    "Режим просмотра: пути можно копировать. Нажмите «Остановить и изменить», чтобы штатно остановить все мониторы, закрыть их сеансы и разрешить правку.",
+    "Modo de consulta: puede copiar las rutas. Detener y editar detiene los monitores correctamente, cierra sus sesiones y desbloquea esta página.",
+    "وضع العرض: يمكن نسخ المسارات. اختر إيقاف المراقبة والتعديل لإيقاف جميع عمليات المراقبة بشكل سليم وإغلاق جلساتها وفتح هذه الصفحة للتعديل."
+  ],
+  "编辑模式：监测已停止。可仅保存，或保存后恢复此前正在监测的配置。取消不会自动恢复监测。": [
+    "Edit mode: monitoring is stopped. Save only, or save and resume the profiles that were running. Cancel does not resume monitoring automatically.",
+    "Mode modification : la surveillance est arrêtée. Enregistrez seulement ou reprenez les profils auparavant actifs. Annuler ne relance pas la surveillance.",
+    "Режим правки: мониторинг остановлен. Можно только сохранить или возобновить ранее работавшие профили. Отмена не возобновляет мониторинг.",
+    "Modo de edición: la vigilancia está detenida. Puede solo guardar o guardar y reanudar los perfiles que estaban activos. Cancelar no reanuda la vigilancia.",
+    "وضع التعديل: المراقبة متوقفة. يمكنك الحفظ فقط أو الحفظ واستئناف الملفات التي كانت تعمل. الإلغاء لا يستأنف المراقبة تلقائياً."
+  ],
+  "正在停止监测…": ["Stopping monitoring…", "Arrêt de la surveillance…", "Остановка мониторинга…", "Deteniendo la vigilancia…", "جارٍ إيقاف المراقبة…"],
+  "正在关闭专用 PowerShell 会话…": ["Closing dedicated PowerShell sessions…", "Fermeture des sessions PowerShell…", "Закрытие сеансов PowerShell…", "Cerrando sesiones de PowerShell…", "جارٍ إغلاق جلسات PowerShell المخصصة…"],
+  "正在准备编辑…": ["Preparing to edit…", "Préparation de la modification…", "Подготовка к правке…", "Preparando la edición…", "جارٍ التحضير للتعديل…"],
+  "设置编辑模式": ["Editing settings", "Modification des paramètres", "Редактирование настроек", "Editando ajustes", "تعديل الإعدادات"],
+  "正在检查配置…": ["Checking configuration…", "Vérification de la configuration…", "Проверка настроек…", "Comprobando configuración…", "جارٍ فحص الإعدادات…"],
+  "配置检查通过。": ["Configuration checks passed.", "Configuration vérifiée.", "Настройки проверены.", "Configuración comprobada.", "اجتازت الإعدادات الفحص."],
+  "尚未关闭的会话：{0}": ["Sessions still open: {0}", "Sessions encore ouvertes : {0}", "Ещё открытые сеансы: {0}", "Sesiones aún abiertas: {0}", "الجلسات التي لا تزال مفتوحة: {0}"],
+  "编辑准备尚未完成。请检查控制台，完成或清空命令后重试；已停止的监测不会自动恢复。": [
+    "Edit preparation is incomplete. Check the consoles, finish or clear any commands, then retry. Stopped monitoring will not resume automatically.",
+    "La préparation n’est pas terminée. Vérifiez les consoles, terminez ou effacez les commandes et réessayez. Les surveillances arrêtées ne reprennent pas automatiquement.",
+    "Подготовка к правке не завершена. Проверьте консоли, завершите или очистите команды и повторите попытку. Остановленный мониторинг не возобновится автоматически.",
+    "La preparación está incompleta. Revise las consolas, termine o borre los comandos y reintente. La vigilancia detenida no se reanudará automáticamente.",
+    "لم يكتمل التحضير للتعديل. افحص وحدات التحكم، وأكمل الأوامر أو امسحها، ثم أعد المحاولة. لن تُستأنف المراقبة المتوقفة تلقائياً."
+  ],
   "语言": [
     "Language",
     "Langue",

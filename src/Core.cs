@@ -40,14 +40,18 @@ namespace SteamMonitorTray {
             s.PythonPath = Files.FindExecutable("python.exe"); return s;
         }
         public bool ShowOnLaunch(bool startup) { return LaunchMode == "AlwaysWindow" || (LaunchMode == "ManualWindowStartupTray" && !startup); }
-        public void Validate() {
+        public void ValidateStructure() {
             Language = L.Normalize(Language);
             if (Version != 1 || Profiles == null || RetrySeconds == null || RetrySeconds.Length != 3 || StableSeconds < 1 || StopTimeoutSeconds < 1) throw new InvalidDataException("设置格式无效。");
             if (LaunchMode != "AlwaysWindow" && LaunchMode != "AlwaysTray" && LaunchMode != "ManualWindowStartupTray") throw new InvalidDataException("启动显示策略无效。");
             foreach (int delay in RetrySeconds) if (delay < 1 || delay > 3600) throw new InvalidDataException("重试间隔必须为 1–3600 秒。");
             HashSet<string> ids = new HashSet<string>();
             foreach (Profile p in Profiles) if (p == null || String.IsNullOrWhiteSpace(p.Name) || String.IsNullOrWhiteSpace(p.Id) || !ids.Add(p.Id)) throw new InvalidDataException("配置名称或标识无效。");
-            if (!File.Exists(ShellPath) || !File.Exists(PythonPath)) throw new InvalidDataException("请在设置中选择有效的 PowerShell 和 Python 程序。");
+        }
+        public void Validate() {
+            ValidateStructure();
+            if (!File.Exists(ShellPath)) throw new InvalidDataException("PowerShell 程序不存在。");
+            if (!File.Exists(PythonPath)) throw new InvalidDataException("Python 程序不存在。");
         }
     }
     [DataContract] public class SessionSpec {
@@ -128,8 +132,17 @@ namespace SteamMonitorTray {
         [DataMember(Name = "error")] public string Error;
     }
     public static class Validation {
+        public static Dictionary<string, string> PathIssues(Profile p) {
+            Dictionary<string, string> issues = new Dictionary<string, string>();
+            if (!Directory.Exists(p.WorkingDirectory)) issues.Add("WorkingDirectory", "工作目录不存在。");
+            if (!File.Exists(p.ConfigFile)) issues.Add("ConfigFile", "配置文件不存在。");
+            if (!String.IsNullOrEmpty(p.EnvFile) && !File.Exists(p.EnvFile)) issues.Add("EnvFile", "密钥文件不存在。");
+            if (!File.Exists(p.Executable)) issues.Add("Executable", "监测程序不存在。");
+            return issues;
+        }
         public static Inspection Inspect(Profile p, string python) {
-            if (!Directory.Exists(p.WorkingDirectory) || !File.Exists(p.ConfigFile) || !File.Exists(p.Executable) || (!String.IsNullOrEmpty(p.EnvFile) && !File.Exists(p.EnvFile))) throw new InvalidDataException("工作目录、配置、环境文件或监测程序不存在。");
+            Dictionary<string, string> issues = PathIssues(p);
+            if (issues.Count > 0) throw new InvalidDataException(String.Join("\n", new List<string>(issues.Values).ConvertAll(value => L.Text(value)).ToArray()));
             ProcessStartInfo info = new ProcessStartInfo(python, Native.Quote(Path.Combine(Files.Bin, "InspectConfig.py")) + " " + Native.Quote(p.ConfigFile) + " " + Native.Quote(p.WorkingDirectory));
             info.UseShellExecute = false; info.CreateNoWindow = true; info.RedirectStandardOutput = true; info.RedirectStandardError = true;
             info.StandardOutputEncoding = Encoding.UTF8; info.StandardErrorEncoding = Encoding.UTF8;
@@ -147,6 +160,37 @@ namespace SteamMonitorTray {
                 if (!p.Enabled) continue;
                 Inspection inspection = Inspect(p, settings.PythonPath); p.LogDirectory = inspection.LogDirectory;
                 foreach (string path in inspection.Outputs) if (!outputs.Add(path)) throw new InvalidDataException("配置间存在重复输出文件，请为每个实例设置独立的日志、CSV 和状态文件。");
+            }
+        }
+        private static bool SamePath(string first, string second) { return String.Equals(first ?? "", second ?? "", StringComparison.OrdinalIgnoreCase); }
+        private static bool PathsChanged(Profile p, Profile old) {
+            return old == null || !SamePath(p.WorkingDirectory, old.WorkingDirectory) || !SamePath(p.ConfigFile, old.ConfigFile) || !SamePath(p.EnvFile, old.EnvFile) || !SamePath(p.Executable, old.Executable);
+        }
+        // Preserve existing broken entries when saving unrelated options. New or
+        // changed enabled entries must pass the same static checks as a start.
+        public static void ForSave(Settings settings, Settings original) {
+            settings.ValidateStructure();
+            if (!SamePath(settings.ShellPath, original.ShellPath) && !File.Exists(settings.ShellPath)) throw new InvalidDataException("PowerShell 程序不存在。");
+            if (!SamePath(settings.PythonPath, original.PythonPath) && !File.Exists(settings.PythonPath)) throw new InvalidDataException("Python 程序不存在。");
+            Dictionary<string, bool> outputs = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            foreach (Profile p in settings.Profiles) {
+                if (!p.Enabled) continue;
+                Profile old = original.Profiles.Find(item => item.Id == p.Id);
+                bool changed = PathsChanged(p, old) || !old.Enabled;
+                if (!File.Exists(settings.PythonPath)) {
+                    if (changed) throw new InvalidDataException("Python 程序不存在。");
+                    continue;
+                }
+                Inspection inspection;
+                try { inspection = Inspect(p, settings.PythonPath); }
+                catch (InvalidDataException) { if (changed) throw; else continue; }
+                p.LogDirectory = inspection.LogDirectory;
+                foreach (string path in inspection.Outputs) {
+                    bool previousChanged;
+                    if (outputs.TryGetValue(path, out previousChanged)) {
+                        if (changed || previousChanged) throw new InvalidDataException("配置间存在重复输出文件，请为每个实例设置独立的日志、CSV 和状态文件。");
+                    } else outputs.Add(path, changed);
+                }
             }
         }
         public static void ForStart(Settings settings, Profile target) {

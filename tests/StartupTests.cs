@@ -15,6 +15,7 @@ internal static class StartupTests {
     private static MenuSnapshot Menu(TrayContext context) { return context.CreateMenuSnapshot(); }
     private static MenuEntry Toggle(TrayContext context) { return Menu(context).Items.First(item => item.Key == "StartupToggle"); }
     private static void OpenMenu(TrayContext context) { context.CreateMenuSnapshot(); }
+    private static T Field<T>(object value, string name) { return (T)value.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value); }
     public static void Run(string root) {
         const string prefix = @"Software\SteamMonitorTray\Tests\";
         string testKey = prefix + Guid.NewGuid().ToString("N");
@@ -37,6 +38,27 @@ internal static class StartupTests {
                 string[] order = Menu(context).Items.Where(item => new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay", "Language" }.Contains(item.Key)).Select(item => item.Key).ToArray();
                 Assert(order.SequenceEqual(new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay", "Language" }), "requested tray settings/startup/display/language order");
                 Assert(Toggle(context).Checked && Toggle(context).Text.Contains("任务管理器已禁用"), "registered disabled startup stays checked with a warning");
+                SettingsForm form = context.OpenSettings(); form.ShowGeneral(); Application.DoEvents();
+                CheckBox startupBox = Field<CheckBox>(form, "startupCheck");
+                Assert(startupBox.Checked && Field<HelpLabel>(form, "startupHelp").Text.Contains("任务管理器禁用"), "settings shows registered startup with task manager warning");
+                startupBox.Checked = false;
+                Assert(!registration.Read().Registered && !Toggle(context).Checked, "settings startup checkbox updates tray immediately");
+                startupBox.Checked = true;
+                Assert(registration.Read().Registered && registration.Read().Approval == StartupApproval.Disabled, "settings cannot override task manager disable");
+                Toggle(context).Invoke(); Assert(!startupBox.Checked, "tray startup change updates open settings immediately");
+                Toggle(context).Invoke(); Assert(startupBox.Checked, "tray startup registration is reflected in settings");
+                key.SetValue("SteamMonitorTray.lnk", Approval(2), RegistryValueKind.Binary); form.RefreshStartupState();
+                Assert(registration.Read().Approval == StartupApproval.Enabled && Field<HelpLabel>(form, "startupHelp").Text == registration.Read().Description, "settings refresh reads external task manager enable");
+                key.SetValue("SteamMonitorTray.lnk", Approval(3), RegistryValueKind.Binary); form.RefreshStartupState();
+                Field<ComboBox>(form, "mode").SelectedIndex = 2;
+                ComboBox language = Field<ComboBox>(form, "language"); language.SelectedIndex = 2;
+                Settings saved = Json.Read<Settings>(Path.Combine(folder, "settings", "settings.json"));
+                Assert(saved.Language == "en" && saved.LaunchMode != "AlwaysTray", "settings language applies immediately without committing unrelated draft options");
+                Menu(context).Items.First(item => item.Key == "Language").Children[3].Invoke();
+                Assert(language.SelectedIndex == 3, "tray language change synchronizes open settings selector");
+                language.SelectedIndex = 2; form.Close(); Application.DoEvents();
+                Assert(registration.Read().Registered && Json.Read<Settings>(Path.Combine(folder, "settings", "settings.json")).Language == "en", "cancel preserves explicitly immediate startup and language changes");
+                Menu(context).Items.First(item => item.Key == "Language").Children[1].Invoke();
                 Toggle(context).Invoke();
                 Assert(!registration.Read().Registered && !Toggle(context).Checked && Toggle(context).Text.Contains("未注册"), "startup checkbox removes its own shortcut");
                 Assert(((byte[])key.GetValue("SteamMonitorTray.lnk"))[0] == 3 && ((byte[])key.GetValue("OtherApp.lnk"))[0] == 7, "unchecking preserves approval records and other entries");
