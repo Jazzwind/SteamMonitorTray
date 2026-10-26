@@ -58,7 +58,8 @@ internal static class LocalizationTests {
                 language.Children[L.Codes.ToList().IndexOf(code) + 1].Invoke(); Application.DoEvents();
                 var menu = context.CreateMenuSnapshot();
                 Assert(menu.Items.First(item => item.Key == "Language").Text == L.Text("语言") && menu.RightToLeft == (code == "ar"), "tray language selection applies immediately: " + code);
-                Assert(menu.Items[menu.Items.Count - 1].Text == L.Text("退出程序") && !menu.Items[menu.Items.Count - 1].Text.Contains("Ctrl+C"), "quit menu requires no manual Ctrl+C: " + code);
+                Assert(menu.Items[menu.Items.Count - 1].Text == L.Text("退出") && !menu.Items[menu.Items.Count - 1].Text.Contains("Ctrl+C"), "quit menu requires no manual Ctrl+C: " + code);
+                if (code == "zh-Hans") Assert(menu.Items[menu.Items.Count - 1].Text == "退出", "concise Simplified Chinese quit label");
             }
             var languages = context.CreateMenuSnapshot().Items.First(item => item.Key == "Language");
             languages.Children[0].Invoke(); Application.DoEvents();

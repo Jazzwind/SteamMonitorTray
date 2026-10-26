@@ -40,8 +40,10 @@ internal static class Tests {
         client.Message += count;
         try {
             client.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(client.Window); }, "show fixture before minimize", 5);
+            Assert(Selection(client, true), "select monitor output before minimizing");
             Native.ShowWindow(client.Window, 7);
             Wait(delegate { return !Native.IsWindowVisible(client.Window); }, "minimize fixture into tray", 5);
+            Wait(delegate { return !Selection(client, false); }, "minimize releases blocked console output", 5);
             MenuSnapshot snapshot = null;
             IntPtr original = IntPtr.Zero;
             bool stable = false, fresh = false;
@@ -118,6 +120,15 @@ internal static class Tests {
         info.UseShellExecute = false; info.CreateNoWindow = true;
         using (Process process = Process.Start(info)) { process.WaitForExit(); if (process.ExitCode != 0) throw new Exception("Fixture input failed: " + process.ExitCode); }
     }
+    private static bool Selection(SessionClient c, bool select) {
+        ProcessStartInfo info = new ProcessStartInfo(Path.Combine(Files.Bin, "InputDriver.exe"), c.Process.Id + (select ? " select unused" : " selected unused"));
+        info.UseShellExecute = false; info.CreateNoWindow = true;
+        using (Process process = Process.Start(info)) {
+            process.WaitForExit();
+            if (process.ExitCode != 0 && process.ExitCode != 6) throw new Exception("Selection probe failed: " + process.ExitCode);
+            return process.ExitCode == 0;
+        }
+    }
     [STAThread] public static int Main(string[] args) {
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         if (args.Length == 1 && args[0] == "--preview") return UiPreview.Run();
@@ -152,7 +163,10 @@ internal static class Tests {
             Wait(delegate { return File.Exists(Path.Combine(one.WorkingDirectory, "fixture.starts")) && File.Exists(Path.Combine(two.WorkingDirectory, "fixture.starts")); }, "both monitors started", 15);
             Assert(Has(a, "Started", 0) && Has(b, "Started", 0), "independent monitoring sessions");
             a.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(a.Window); }, "show original console", 5);
+            Assert(Selection(a, true), "fixture enters console selection mode");
+            Thread.Sleep(350); Assert(Selection(a, false), "visible console preserves selection for copying");
             a.Send("Hide"); Wait(delegate { return !Native.IsWindowVisible(a.Window); }, "hide original console", 5);
+            Wait(delegate { return !Selection(a, false); }, "hide cancels console selection", 5);
             Assert(a.Alive && b.Alive, "visibility changes preserve sessions");
             int before = Count(a); a.Send("Stop");
             Wait(delegate { return File.Exists(Path.Combine(one.WorkingDirectory, "fixture.cleanup")) && Has(a, "Prompt", before); }, "Ctrl+C cleanup and prompt return", 15);
@@ -160,7 +174,10 @@ internal static class Tests {
             Assert(!File.Exists(Path.Combine(two.WorkingDirectory, "fixture.cleanup")) && b.Alive, "stopping one console leaves the other running");
             string preserved = Path.Combine(one.WorkingDirectory, "preserved.txt");
             Input(a, "Set-Content -LiteralPath '" + preserved.Replace("'", "''") + "' -Value preserved", false);
-            Thread.Sleep(200); before = Count(a); a.Send("Start");
+            Thread.Sleep(200);
+            a.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(a.Window); }, "show prompt with unsubmitted input", 5);
+            Assert(Selection(a, true), "select output above unsubmitted command");
+            before = Count(a); a.Send("Start");
             Wait(delegate { return Has(a, "Busy", before); }, "reject start over unsubmitted input", 5);
             Assert(File.ReadAllLines(Path.Combine(one.WorkingDirectory, "fixture.starts")).Length == 1, "unsubmitted command is never overwritten");
             before = Count(a); Input(a, "\n", false);
@@ -173,6 +190,8 @@ internal static class Tests {
             Wait(delegate { return Has(a, "Prompt", before) && File.Exists(Path.Combine(two.WorkingDirectory, "fixture.cleanup")); }, "stop all gracefully", 15);
             Assert(Has(a, "Interrupted", before) && Has(a, "Stopped", before), "console Ctrl+C synchronizes stopped state");
             Wait(delegate { return Has(b, "Prompt", 4); }, "second prompt", 10);
+            b.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(b.Window); }, "show prompt before selected exit", 5);
+            Assert(Selection(b, true), "prompt selection before exit");
             a.Send("Exit"); b.Send("Exit");
             Wait(delegate { return !a.Alive && !b.Alive; }, "normal PowerShell and host exit", 15);
             Assert(true, "retained PowerShell sessions exit without forced termination");
@@ -195,7 +214,35 @@ internal static class Tests {
             CheckMinimizedTrayMenu(stopFixture);
             Stopwatch quiet = Stopwatch.StartNew(); while (quiet.Elapsed.TotalSeconds < 2) { Application.DoEvents(); Thread.Sleep(20); }
             Assert(File.ReadAllLines(Path.Combine(stopFixture.WorkingDirectory, "fixture.starts")).Length == 1, "manual stop cancels automatic restart");
+            object runtime = ManagedRuntime(stopFixture);
+            SessionClient managedClient = (SessionClient)runtime.GetType().GetField("Client").GetValue(runtime);
+            FieldInfo writerField = typeof(SessionClient).GetField("writer", BindingFlags.NonPublic | BindingFlags.Instance);
+            object savedWriter = writerField.GetValue(managedClient);
+            try {
+                writerField.SetValue(managedClient, null); ManagerAction("Quit", null); ManagerAction("Tick", null);
+                Assert(!(bool)runtime.GetType().GetField("ExitSent").GetValue(runtime) && !(bool)managerType.GetField("quitting", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(manager), "failed exit send remains retryable");
+            } finally { writerField.SetValue(managedClient, savedWriter); }
+            // Lost/stale prompt state must surface a timeout, not a silent exit hang.
+            runtime.GetType().GetField("Prompt").SetValue(runtime, false);
+            ManagerAction("Quit", null);
+            Assert(((TrayContext)manager).CreateMenuSnapshot().Items[0].Text == "正在退出…", "tray exposes pending quit state");
+            Assert(!((TrayContext)manager).CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Enabled, "start action is disabled while quitting");
+            managerType.GetField("quitDeadline", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(manager, DateTime.UtcNow.AddSeconds(-1));
+            ManagerAction("Tick", null);
+            Wait(delegate { return ManagedStatus(stopFixture) == "仍在等待退出" && Native.IsWindowVisible(managedClient.Window); }, "exit timeout restores console without killing session", 5);
+            Assert(ManagerAlive(stopFixture), "exit timeout preserves session for recovery");
+            runtime.GetType().GetField("Prompt").SetValue(runtime, true);
+            Assert(Selection(managedClient, true), "selected console before tray quit");
             ManagerAction("Quit", null); Wait(delegate { return !ManagerAlive(stopFixture); }, "stopped manager exits", 10); Application.DoEvents(); manager = null;
+            managed = Settings.Defaults(); managed.LaunchMode = "AlwaysTray";
+            Profile quitFixture = Fixture("selected-quit-manager", false); managed.Profiles.Add(quitFixture); OpenManager(managed, "selected-quit-manager-data");
+            Wait(delegate { return ManagedStatus(quitFixture) == "监测进程运行" && File.Exists(Path.Combine(quitFixture.WorkingDirectory, "fixture.starts")); }, "start monitor before selected tray quit", 10);
+            runtime = ManagedRuntime(quitFixture); managedClient = (SessionClient)runtime.GetType().GetField("Client").GetValue(runtime);
+            managedClient.Send("Show", "NoActivate"); Wait(delegate { return Native.IsWindowVisible(managedClient.Window); }, "show running monitor before selected quit", 5);
+            Assert(Selection(managedClient, true), "select running output before tray quit");
+            ManagerAction("Quit", null); Wait(delegate { return !ManagerAlive(quitFixture); }, "selected running manager gracefully exits", 15);
+            Assert(File.ReadAllText(Path.Combine(quitFixture.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "tray quit releases selection and completes real Ctrl+C cleanup");
+            Application.DoEvents(); manager = null;
             Console.WriteLine("RESULT all checks passed"); return 0;
         } catch (Exception ex) { Console.Error.WriteLine("FAIL " + ex.Message); return 1; }
         finally {

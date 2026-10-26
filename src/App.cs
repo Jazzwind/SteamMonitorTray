@@ -61,6 +61,7 @@ namespace SteamMonitorTray {
         private readonly Dictionary<string, Runtime> runtimes = new Dictionary<string, Runtime>();
         private readonly System.Windows.Forms.Timer timer;
         private bool quitting;
+        private DateTime quitDeadline;
         internal readonly NativeMenu MenuPresenter = new NativeMenu();
         private static Icon StatusIcon(Color color, string state) {
             using (Bitmap bitmap = new Bitmap(32, 32)) {
@@ -145,6 +146,7 @@ namespace SteamMonitorTray {
                 case "Welcome": if (settings.ShowOnLaunch(startup)) r.Client.Send("Show"); break;
                 case "Prompt": r.Prompt = true; TryStart(r); break;
                 case "ShellBusy": r.Prompt = false; break;
+                case "ExitRequested": r.Prompt = false; break;
                 case "Started":
                     r.StartSent = false; r.NeedsStart = false; r.Running = true; r.Prompt = false; r.Started = DateTime.UtcNow;
                     if (!r.Desired && r.Stopping) r.Client.Send("Stop");
@@ -187,7 +189,14 @@ namespace SteamMonitorTray {
                 if (r.Stopping && DateTime.UtcNow >= r.StopDeadline) {
                     r.Status = "仍在等待停止"; r.StopDeadline = DateTime.MaxValue; Notice(L.Text("{0} 尚未退出，可以继续等待或再次选择停止监测。", r.Profile.Name)); RefreshMenu();
                 }
-                if (quitting && r.Alive && !r.Running && !r.StartSent && r.Prompt && !r.ExitSent) { r.ExitSent = true; r.Client.Send("Exit"); }
+                if (quitting && r.Alive && !r.Running && !r.StartSent && r.Prompt && !r.ExitSent) {
+                    r.ExitSent = r.Client.Send("Exit");
+                    if (r.ExitSent) { r.Status = "正在退出"; RefreshMenu(); }
+                    else { quitting = false; ShowExitWait(); }
+                }
+            }
+            if (quitting && DateTime.UtcNow >= quitDeadline && runtimes.Values.Any(r => r.Alive)) {
+                quitDeadline = DateTime.MaxValue; ShowExitWait();
             }
             if (quitting && runtimes.Values.All(r => !r.Alive)) {
                 timer.Stop(); MenuPresenter.Dispose(); icon.Visible = false; icon.Dispose(); runningIcon.Dispose(); stoppedIcon.Dispose(); warningIcon.Dispose(); foreach (Runtime r in runtimes.Values) if (r.Client != null) r.Client.Dispose(); dispatcher.Dispose(); ExitThread();
@@ -209,7 +218,17 @@ namespace SteamMonitorTray {
                 if (enable && state.HasWarning) Notice(state.Description);
             } catch (Exception ex) { Notice(Program.SafeError(ex)); }
         }
-        private void Quit() { quitting = true; foreach (Runtime r in runtimes.Values) Stop(r); }
+        private void ShowExitWait() {
+            foreach (Runtime r in runtimes.Values) if (r.Alive) {
+                if (!r.Running && !r.StartSent) r.Status = "仍在等待退出";
+                r.Client.Send("Show");
+            }
+            Notice("退出尚未完成，托盘会继续保留。请检查显示的控制台，完成或清空命令后重试退出；程序不会强制结束进程。"); RefreshMenu();
+        }
+        private void Quit() {
+            quitting = true; quitDeadline = DateTime.UtcNow.AddSeconds(settings.StopTimeoutSeconds);
+            foreach (Runtime r in runtimes.Values) Stop(r);
+        }
         private void EditSettings() {
             using (SettingsForm form = new SettingsForm(settings, runtimes.Values.Any(r => r.Alive))) {
                 if (form.ShowDialog() == DialogResult.OK) {
@@ -232,8 +251,8 @@ namespace SteamMonitorTray {
         }
         internal MenuSnapshot CreateMenuSnapshot() {
             List<MenuEntry> items = new List<MenuEntry>();
-            items.Add(new MenuEntry("Status", L.Text("监测进程运行 {0}/{1}", runtimes.Values.Count(r => r.Running), settings.Profiles.Count(p => p.Enabled)), enabled: false));
-            items.Add(Item("StartAll", "全部启动", delegate { foreach (Runtime r in runtimes.Values) if (r.Profile.Enabled) Start(r, true); }));
+            items.Add(new MenuEntry("Status", quitting ? L.Text("正在退出…") : L.Text("监测进程运行 {0}/{1}", runtimes.Values.Count(r => r.Running), settings.Profiles.Count(p => p.Enabled)), enabled: false));
+            items.Add(Item("StartAll", "全部启动", delegate { foreach (Runtime r in runtimes.Values) if (r.Profile.Enabled) Start(r, true); }, !quitting));
             items.Add(Item("StopAll", "全部停止", delegate { foreach (Runtime r in runtimes.Values) Stop(r); }));
             items.Add(MenuEntry.Separator());
             foreach (Runtime r in runtimes.Values) {
@@ -241,7 +260,7 @@ namespace SteamMonitorTray {
                 items.Add(new MenuEntry(key, L.Text("{0} — {1}", r.Profile.Name, L.Text(r.Status)), children: new MenuEntry[] {
                     Item(key + ".Show", "显示窗口", delegate { if (r.Alive) r.Client.Send("Show"); }),
                     Item(key + ".Hide", "隐藏窗口", delegate { if (r.Alive) r.Client.Send("Hide"); }),
-                    Item(key + ".Start", "启动监测", delegate { Start(r, true); }, !r.Running && !r.StartSent && !r.Stopping && r.Profile.Enabled),
+                    Item(key + ".Start", "启动监测", delegate { Start(r, true); }, !quitting && !r.Running && !r.StartSent && !r.Stopping && r.Profile.Enabled),
                     Item(key + ".Stop", r.Stopping ? "再次发送 Ctrl+C" : "停止监测", delegate { Stop(r); }),
                     Item(key + ".Logs", "打开日志文件夹", delegate { try { Process.Start("explorer.exe", Native.Quote(r.Profile.LogDirectory)); } catch (Exception ex) { Notice(Program.SafeError(ex)); } })
                 }));
@@ -265,7 +284,7 @@ namespace SteamMonitorTray {
                 languages.Add(new MenuEntry("Language." + code, L.Names[i], delegate { SetLanguage(code); }, isChecked: settings.Language == code));
             }
             items.Add(new MenuEntry("Language", L.Text("语言"), children: languages.ToArray()));
-            items.Add(MenuEntry.Separator()); items.Add(Item("Quit", "退出程序", Quit));
+            items.Add(MenuEntry.Separator()); items.Add(Item("Quit", "退出", Quit));
             return new MenuSnapshot(items, L.IsRtl);
         }
         internal void ShowMenu(Point position) {

@@ -15,6 +15,16 @@ namespace SteamMonitorTray {
         private static Process powerShell;
         private static SessionSpec spec;
         private static Timer minimizeTimer;
+        private static readonly object consoleGate = new object();
+        private static bool ResumeConsole(bool reportFailure = true) {
+            bool resumed;
+            lock (consoleGate) resumed = Native.ResumeConsole(window);
+            if (!resumed && reportFailure) Send(new Wire("Fault", "ConsoleResumeFailed"));
+            return resumed;
+        }
+        private static void HideConsole() {
+            Native.ShowWindow(window, 0); ResumeConsole(); Send(new Wire("Hidden", ""));
+        }
         private static void Send(Wire message) {
             lock (controllerGate) {
                 try { if (controllerWriter != null) controllerWriter.WriteLine(Json.Text(message)); }
@@ -57,15 +67,17 @@ namespace SteamMonitorTray {
                     while ((line = reader.ReadLine()) != null) {
                         Wire message = Json.ReadText<Wire>(line);
                         switch (message.Kind) {
-                            case "Start": ToShell("Start"); break;
+                            case "Start": if (ResumeConsole()) ToShell("Start"); break;
                             case "Exit":
+                                if (!ResumeConsole()) break;
                                 if (monitored) Send(new Wire("Busy", "MonitorRunning")); else ToShell("Exit");
                                 break;
                             case "Stop":
+                                if (!ResumeConsole()) break;
                                 if (monitored && !Native.GenerateConsoleCtrlEvent(0, 0)) Send(new Wire("Fault", "CtrlCFailed"));
                                 break;
                             case "Show": Native.ShowWindow(window, message.Value == "NoActivate" ? 4 : 9); if (message.Value != "NoActivate") Native.SetForegroundWindow(window); Send(new Wire("Visible", "")); break;
-                            case "Hide": Native.ShowWindow(window, 0); Send(new Wire("Hidden", "")); break;
+                            case "Hide": HideConsole(); break;
                         }
                     }
                 }
@@ -100,7 +112,10 @@ namespace SteamMonitorTray {
                     Thread controlThread = new Thread(ReadController); controlThread.IsBackground = true; controlThread.Start();
                     minimizeTimer = new Timer(delegate {
                         // A hidden console may remain iconic. Hide/report only a visible minimized window.
-                        if (Native.IsWindowVisible(window) && Native.IsIconic(window)) { Native.ShowWindow(window, 0); Send(new Wire("Hidden", "")); }
+                        if (Native.IsWindowVisible(window) && Native.IsIconic(window)) HideConsole();
+                        // A late mouse-selection event can arrive after the hide.
+                        // Visible windows keep normal selection/copy behavior.
+                        else if (!Native.IsWindowVisible(window)) ResumeConsole(false);
                     }, null, 100, 100);
                     powerShell.WaitForExit();
                     Send(new Wire("SessionEnded", exiting ? "Requested" : "UserExit") { Code = powerShell.ExitCode });

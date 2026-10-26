@@ -76,9 +76,11 @@ High DPI features require a Windows version supporting Per-Monitor V2 (Windows 1
 - Double-click the tray icon to restore existing windows.
 - Start or stop all enabled profiles, or control each profile separately.
 - Minimize a console to hide it in the tray. Its output and monitoring session are preserved.
+- Hiding or minimizing a console releases any active text selection so Quick Edit cannot pause a hidden session. Visible windows still support selecting and copying text; tray commands also release a selection before proceeding.
 - **Quit** automatically requests graceful shutdown of every monitor and then exits PowerShell. You do not need to press Ctrl+C manually before quitting.
 - The console close button is disabled during monitoring to prevent Windows from closing the entire console directly.
 - If shutdown takes more than 30 seconds, the app waits and offers another stop request. It never automatically force-kills a monitor.
+- While quitting, the tray shows **Quitting…**. If exit remains incomplete after 30 seconds, the console is restored for inspection and the tray stays available. Finish or clear any pending command and try **Quit** again.
 
 After monitoring stops, the real PowerShell prompt remains available. Enter ordinary commands or type `steam_monitor` to start again. Keyboard Ctrl+C also stops the monitor normally. The wrapper function is limited to app-owned sessions; your PowerShell profile is not changed.
 
@@ -143,7 +145,7 @@ Run native integration tests from an ordinary interactive Windows desktop, not a
 .\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python -m unittest discover -s tests -p 'test_*.py'
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.2.0
+.\package.ps1 -Version 1.2.1
 ```
 
 Tests use local fake monitors and isolated configuration/startup metadata. They do not call Steam or Discord. Release ZIPs in `dist` use a strict runtime allowlist and include both language guides. Privacy scanning covers source, staged files, reachable Git history and release archives.

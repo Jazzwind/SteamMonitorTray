@@ -19,9 +19,22 @@ internal static class InputDriver {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern bool WriteConsoleInputW(IntPtr handle, Record[] records, uint count, out uint written);
     [DllImport("kernel32.dll")] private static extern bool SetConsoleCtrlHandler(Handler callback, bool add);
     [DllImport("kernel32.dll")] private static extern bool GenerateConsoleCtrlEvent(uint kind, uint group);
+    [StructLayout(LayoutKind.Sequential)] private struct SelectionInfo {
+        public uint flags;
+        public short anchorX, anchorY, left, top, right, bottom;
+    }
+    [DllImport("kernel32.dll")] private static extern IntPtr GetConsoleWindow();
+    [DllImport("kernel32.dll")] private static extern bool GetConsoleSelectionInfo(out SelectionInfo info);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessageTimeoutW(IntPtr window, uint msg, IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out UIntPtr result);
     public static int Main(string[] args) {
         if (args.Length != 3) return 2;
         FreeConsole(); if (!AttachConsole(Int32.Parse(args[0]))) return 3;
+        if (args[1] == "select" || args[1] == "selected") {
+            UIntPtr result;
+            if (args[1] == "select" && SendMessageTimeoutW(GetConsoleWindow(), 0x112, new IntPtr(0xFFF2), IntPtr.Zero, 2, 1000, out result) == IntPtr.Zero) { FreeConsole(); return 7; }
+            SelectionInfo selection; bool selected = GetConsoleSelectionInfo(out selection) && (selection.flags & 3) != 0;
+            FreeConsole(); return selected ? 0 : 6;
+        }
         if (args[1] == "ctrlc") {
             handler = delegate(uint kind) { return kind == 0; }; SetConsoleCtrlHandler(handler, true);
             bool sent = GenerateConsoleCtrlEvent(0, 0); Thread.Sleep(150); FreeConsole(); return sent ? 0 : 4;

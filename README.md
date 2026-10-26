@@ -83,9 +83,11 @@ High DPI features require a Windows version supporting Per-Monitor V2 (Windows 1
 - Double-click the tray icon to restore existing windows.
 - Start or stop all enabled profiles, or control each profile separately.
 - Minimize a console to hide it in the tray. Its output and monitoring session are preserved.
+- Hiding or minimizing a console releases any active text selection so Quick Edit cannot pause a hidden session. Visible windows still support selecting and copying text; tray commands also release a selection before proceeding.
 - **Quit** automatically requests graceful shutdown of every monitor and then exits PowerShell. You do not need to press Ctrl+C manually before quitting.
 - The console close button is disabled during monitoring to prevent Windows from closing the entire console directly.
 - If shutdown takes more than 30 seconds, the app waits and offers another stop request. It never automatically force-kills a monitor.
+- While quitting, the tray shows **Quitting…**. If exit remains incomplete after 30 seconds, the console is restored for inspection and the tray stays available. Finish or clear any pending command and try **Quit** again.
 
 After monitoring stops, the real PowerShell prompt remains available. Enter ordinary commands or type `steam_monitor` to start again. Keyboard Ctrl+C also stops the monitor normally. The wrapper function is limited to app-owned sessions; your PowerShell profile is not changed.
 
@@ -150,7 +152,7 @@ Run native integration tests from an ordinary interactive Windows desktop, not a
 .\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python -m unittest discover -s tests -p 'test_*.py'
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.2.0
+.\package.ps1 -Version 1.2.1
 ```
 
 Tests use local fake monitors and isolated configuration/startup metadata. They do not call Steam or Discord. Release ZIPs in `dist` use a strict runtime allowlist and include both language guides. Privacy scanning covers source, staged files, reachable Git history and release archives.
@@ -187,7 +189,7 @@ Please consider starring [steam_monitor](https://github.com/misiektoja/steam_mon
 
 每份配置拥有独立的 PowerShell 会话。收进托盘后监测继续，恢复窗口仍是原来的输出现场。停止使用真正的 Ctrl+C，停止后回到 PowerShell 提示符。
 
-点击 **“退出程序”** 会自动正常停止监测并退出，无需先手动按 Ctrl+C。
+点击 **“退出”** 会自动正常停止监测并退出，无需先手动按 Ctrl+C。
 
 ## 上游项目与致谢
 
@@ -269,8 +271,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 - 每份配置提供显示、隐藏、启动、停止、打开日志文件夹。
 - 顶部提供全部启动、全部停止；配置名称由用户自己命名。
 - 最小化控制台会收进托盘。监测期间禁用右上角关闭按钮，避免 Windows 直接关闭整个控制台。
-- “退出程序”先向全部监测实例发送 Ctrl+C，待监测退出后再正常退出 PowerShell。
+- 隐藏或最小化控制台时会取消文字选择，避免 Quick Edit 暂停隐藏会话。窗口显示时仍可正常选择、复制；托盘命令执行前也会解除选择状态。
+- “退出”先向全部监测实例发送 Ctrl+C，待监测退出后再正常退出 PowerShell。
 - 如果 30 秒内还没有停止，状态显示“仍在等待停止”；可以继续等或再次发送 Ctrl+C，程序不会自动强杀。
+- 退出过程中托盘显示“正在退出…”。超过 30 秒仍未完成时，会还原控制台供检查并保留托盘；完成或清空未结束的命令后可再次选择“退出”。
 
 停止之后可以输入普通 PowerShell 命令，也可以直接输入 `steam_monitor` 再次启动。包装函数只存在于本工具创建的会话里，不改动你的 PowerShell 用户配置。
 
@@ -376,7 +380,7 @@ GitHub 首页将英文放在最前面并默认展开。点击顶部 **简体中�
 ```powershell
 .\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.2.0
+.\package.ps1 -Version 1.2.1
 ```
 
 测试只运行本地 FakeMonitor，不使用真实配置，不连接 Steam 或 Discord。覆盖隐藏启动、真实 Ctrl+C 清理、实例隔离、输入保留、原生提示符、手动启停同步、输出冲突、管理器重试上限和正常退出。测试产物位于已忽略的 `artifacts` 中。

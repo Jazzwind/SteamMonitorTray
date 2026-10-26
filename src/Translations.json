@@ -13,7 +13,17 @@
     "Automático (idioma del sistema)",
     "تلقائي (لغة النظام)"
   ],
-  "退出程序": [
+  "正在退出…": ["Quitting…", "Fermeture…", "Выход…", "Saliendo…", "جارٍ الخروج…"],
+  "正在退出": ["Quitting", "Fermeture", "Выход", "Saliendo", "جارٍ الخروج"],
+  "仍在等待退出": ["Still waiting to quit", "En attente de fermeture", "Ожидание выхода", "Esperando para salir", "لا يزال بانتظار الخروج"],
+  "退出尚未完成，托盘会继续保留。请检查显示的控制台，完成或清空命令后重试退出；程序不会强制结束进程。": [
+    "Quit has not completed; the tray remains available. Check the console, finish or clear the command, then try Quit again. Processes will not be forcibly terminated.",
+    "La fermeture n’est pas terminée ; l’icône reste disponible. Vérifiez la console, terminez ou effacez la commande, puis réessayez de quitter. Aucun processus ne sera arrêté de force.",
+    "Выход ещё не завершён; значок остаётся доступным. Проверьте консоль, завершите или очистите команду и повторите выход. Процессы не будут завершены принудительно.",
+    "La salida no ha terminado; el icono sigue disponible. Revise la consola, termine o borre el comando e intente salir de nuevo. Los procesos no se terminarán por la fuerza.",
+    "لم يكتمل الخروج؛ تظل أيقونة علبة النظام متاحة. افحص وحدة التحكم، وأكمل الأمر أو امسحه، ثم حاول الخروج مجدداً. لن يتم إنهاء العمليات بالقوة."
+  ],
+  "退出": [
     "Quit",
     "Quitter",
     "Выход",
