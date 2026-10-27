@@ -31,7 +31,7 @@ internal static class ResizeTests {
     }
     internal static void Run(string root, bool verifySpacing) {
         Settings s = Settings.Defaults(); s.Language = "zh-Hans";
-        s.Profiles.Add(new Profile { Name = "Resize fixture", Enabled = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
+        s.Profiles.Add(new Profile { Name = "Resize fixture", AutoStart = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
         StartupRegistration registration = new StartupRegistration(Path.Combine(root, "resize-startup.lnk"), Path.Combine(Files.Bin, "SteamMonitorTray.exe"), @"Software\SteamMonitorTray\Tests\" + Guid.NewGuid().ToString("N"), "resize-startup.lnk");
         TrayContext context = new TrayContext(s, true, Path.Combine(root, "resize-data"), registration);
         try {

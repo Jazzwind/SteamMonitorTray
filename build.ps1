@@ -17,6 +17,7 @@ Copy-Item -LiteralPath "$root\src\App.config" -Destination "$bin\SteamMonitorTra
 Copy-Item -LiteralPath "$root\scripts\InspectConfig.py" -Destination $bin -Force
 if ($Test -or $BuildTests) {
     Compile @('/target:exe', "/out:$bin\FakeMonitor.exe", "$root\tests\FakeMonitor.cs")
+    Compile @('/target:exe', "/out:$bin\ColorProbe.exe", "/r:$bin\SteamMonitorTray.Core.dll", "$root\tests\ColorProbe.cs")
     Compile @('/target:winexe', "/out:$bin\InputDriver.exe", "$root\tests\InputDriver.cs")
     $wpf = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\WPF'
     Compile @('/target:exe', "/out:$bin\SteamMonitorTray.Tests.exe", "/win32manifest:$root\src\app.manifest", "/r:$bin\SteamMonitorTray.Core.dll", "/r:$bin\SteamMonitorTray.exe", '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Runtime.Serialization.dll', "/r:$wpf\UIAutomationClient.dll", "/r:$wpf\UIAutomationTypes.dll", "$root\tests\Tests.cs", "$root\tests\ResizeTests.cs", "$root\tests\SettingsTests.cs", "$root\tests\StartupTests.cs", "$root\tests\LocalizationTests.cs", "$root\tests\NativeMenuTests.cs", "$root\tests\UiPreview.cs", "$root\src\UiAssemblyInfo.cs")

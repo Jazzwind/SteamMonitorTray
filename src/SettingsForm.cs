@@ -10,6 +10,15 @@ namespace SteamMonitorTray {
     internal sealed class BufferedTable : TableLayoutPanel {
         public BufferedTable() { DoubleBuffered = true; }
     }
+    internal sealed class ReorderListBox : ListBox {
+        internal bool Dragging;
+        protected override void WndProc(ref Message m) {
+            // During OLE dragging, GiveFeedback owns the cursor. The normal
+            // list cursor must not replace it between drag feedback callbacks.
+            if (Dragging && m.Msg == 0x20) { m.Result = new IntPtr(1); return; }
+            base.WndProc(ref m);
+        }
+    }
     internal sealed class HelpLabel : Label {
         private readonly Dictionary<int, Size> sizes = new Dictionary<int, Size>();
         private int measuredDpi;
@@ -32,16 +41,17 @@ namespace SteamMonitorTray {
         protected override void OnPaddingChanged(EventArgs e) { if (sizes != null) sizes.Clear(); base.OnPaddingChanged(e); }
     }
     internal sealed class SettingsForm : Form {
-        private readonly Settings draft, original;
+        private Settings draft, original;
         private bool locked, preparing, pausedForEdit, saving, checking, loading;
         internal bool IsLiveResizing { get; private set; }
         private int selected = -1, revision, lastCheckedRevision = -1;
         private string progress, progressDetails;
-        private readonly ListBox list = new ListBox { IntegralHeight = false };
+        private readonly ReorderListBox list = new ReorderListBox { IntegralHeight = false };
         private readonly Dictionary<string, TextBox> fields = new Dictionary<string, TextBox>();
         private readonly Dictionary<string, HelpLabel> descriptions = new Dictionary<string, HelpLabel>();
         private readonly Dictionary<string, HelpLabel> fieldErrors = new Dictionary<string, HelpLabel>();
         private readonly Dictionary<string, string> inspectionErrors = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> inspectionWarnings = new Dictionary<string, string>();
         private readonly List<Button> profileBrowse = new List<Button>();
         private readonly CheckBox enabled = new CheckBox { Text = "打开托盘程序后，自动开始监测此账号", AutoSize = true };
         private readonly CheckBox restart = new CheckBox { Text = "异常退出后有限重试（默认 5 / 15 / 30 秒）", AutoSize = true };
@@ -59,6 +69,11 @@ namespace SteamMonitorTray {
         private readonly HelpLabel instructions, environmentHelp, checkStatus, startupHelp;
         private readonly Button prepare = new Button { AutoSize = true }, recheck = new Button { Text = "检查配置", AutoSize = true };
         private readonly Button add = new Button { Text = "添加已有配置…", AutoSize = true }, remove = new Button { Text = "移除", AutoSize = true };
+        private readonly Button openWindow = new Button { Text = "打开 PowerShell 窗口", AutoSize = true };
+        private readonly Button moveUp = new Button { Text = "↑", AutoSize = true }, moveDown = new Button { Text = "↓", AutoSize = true };
+        private Point dragOrigin;
+        private int insertion = -1;
+        private readonly Timer dragTimer = new Timer { Interval = 120 };
         private readonly Button save = new Button { AutoSize = true }, resume = new Button { Text = "保存并恢复监测", AutoSize = true };
         private readonly ToolTip tips = new ToolTip { AutoPopDelay = 15000, InitialDelay = 400, ShowAlways = true };
         private readonly Dictionary<Control, string> textKeys = new Dictionary<Control, string>();
@@ -73,6 +88,9 @@ namespace SteamMonitorTray {
         internal bool IsLocked { get { return locked; } }
         internal event Action PrepareRequested;
         internal event Action<Settings, bool> SaveRequested;
+        internal event Action<Settings, string> WindowRequested;
+        internal event Action<string> RestoreWindowRequested;
+        internal Func<string, bool> SessionExists;
         internal event Action<bool> StartupRequested;
         internal event Action<string> LanguageRequested;
 
@@ -121,7 +139,7 @@ namespace SteamMonitorTray {
             instructions = new HelpLabel("") { ForeColor = Color.FromArgb(45, 70, 105) }; status.Controls.Add(instructions);
             FlowLayoutPanel tools = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
             prepare.Click += delegate { if (PrepareRequested != null) PrepareRequested(); };
-            recheck.Click += async delegate { await RecheckAsync(); }; tools.Controls.Add(prepare); tools.Controls.Add(recheck); status.Controls.Add(tools);
+            recheck.Click += async delegate { await RecheckAsync(); }; openWindow.Click += async delegate { await OpenWindowAsync(true); }; tools.Controls.Add(prepare); tools.Controls.Add(openWindow); tools.Controls.Add(recheck); status.Controls.Add(tools);
             status.Controls.Add(new HelpLabel("检查所有配置的文件路径、配置格式和输出文件冲突，不会启动监测或发送通知。"));
             checkStatus = new HelpLabel(""); status.Controls.Add(checkStatus); root.Controls.Add(status);
             profiles = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
@@ -129,8 +147,46 @@ namespace SteamMonitorTray {
             TableLayoutPanel left = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2 };
             left.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             list.Dock = DockStyle.Fill; list.SelectedIndexChanged += delegate { if (!loading) SelectProfile(); }; left.Controls.Add(list);
+            list.AllowDrop = true; list.DrawMode = DrawMode.OwnerDrawFixed;
+            list.DrawItem += delegate(object sender, DrawItemEventArgs e) {
+                if (e.Index < 0) return; e.DrawBackground();
+                TextRenderer.DrawText(e.Graphics, list.Items[e.Index].ToString(), list.Font, e.Bounds, e.ForeColor, TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | (L.IsRtl ? TextFormatFlags.RightToLeft | TextFormatFlags.Right : TextFormatFlags.Left)); e.DrawFocusRectangle();
+                if (insertion == e.Index || (insertion == list.Items.Count && e.Index == list.Items.Count - 1)) {
+                    int y = insertion == e.Index ? e.Bounds.Top : e.Bounds.Bottom - 2;
+                    using (Pen pen = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(2))) e.Graphics.DrawLine(pen, e.Bounds.Left, y, e.Bounds.Right, y);
+                }
+            };
+            list.MouseDown += delegate(object sender, MouseEventArgs e) { dragOrigin = e.Location; };
+            list.MouseMove += delegate(object sender, MouseEventArgs e) {
+                if (list.Dragging || locked || saving || preparing || e.Button != MouseButtons.Left || selected < 0 || list.IndexFromPoint(dragOrigin) != selected) return;
+                Size threshold = SystemInformation.DragSize;
+                if (Math.Abs(e.X - dragOrigin.X) < threshold.Width / 2 && Math.Abs(e.Y - dragOrigin.Y) < threshold.Height / 2) return;
+                DataObject data = new DataObject("SteamMonitorTray.Profile", draft.Profiles[selected].Id);
+                list.Dragging = true;
+                try { list.DoDragDrop(data, DragDropEffects.Move); }
+                finally { list.Dragging = false; ClearInsertion(); Cursor.Current = list.Cursor; }
+            };
+            list.GiveFeedback += delegate(object sender, GiveFeedbackEventArgs e) {
+                e.UseDefaultCursors = false;
+                Cursor cursor = (e.Effect & DragDropEffects.Move) != 0 ? Cursors.SizeAll : Cursors.No;
+                if (Cursor.Current == null || Cursor.Current.Handle != cursor.Handle) Cursor.Current = cursor;
+            };
+            list.DragEnter += UpdateDrag;
+            list.DragOver += UpdateDrag;
+            list.DragLeave += delegate { ClearInsertion(); };
+            list.DragDrop += delegate(object sender, DragEventArgs e) {
+                string id = DragProfileId(e);
+                if (id == null) { ClearInsertion(); return; }
+                int source = draft.Profiles.FindIndex(p => p.Id == id);
+                UpdateInsertion(list.PointToClient(new Point(e.X, e.Y)));
+                int target = insertion; ClearInsertion(); if (source < 0 || target < 0) return;
+                if (source < target) target--; MoveProfile(source, target);
+            };
+            dragTimer.Tick += delegate { ScrollDrag(list.PointToClient(Cursor.Position)); };
             FlowLayoutPanel actions = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
-            add.Click += delegate { AddProfile(); }; remove.Click += delegate { RemoveProfile(); }; actions.Controls.Add(add); actions.Controls.Add(remove); left.Controls.Add(actions, 0, 1); profiles.Controls.Add(left, 0, 0);
+            add.Click += delegate { AddProfile(); }; remove.Click += delegate { RemoveProfile(); };
+            moveUp.Click += delegate { MoveProfile(selected, selected - 1); }; moveDown.Click += delegate { MoveProfile(selected, selected + 1); };
+            actions.Controls.Add(add); actions.Controls.Add(remove); actions.Controls.Add(moveUp); actions.Controls.Add(moveDown); left.Controls.Add(actions, 0, 1); profiles.Controls.Add(left, 0, 0);
             Panel scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(10, 0, 0, 0) };
             editor = Table(18); editor.Dock = DockStyle.Top; editor.Padding = new Padding(0, 0, 7, 0);
             string[] keys = { "Name", "WorkingDirectory", "ConfigFile", "EnvFile", "Executable" }, labels = { "配置名称", "工作目录", "配置文件（.conf）", "密钥文件（.env）", "监测程序（exe）" };
@@ -150,7 +206,7 @@ namespace SteamMonitorTray {
                 HelpLabel error = new HelpLabel("") { ForeColor = Color.Firebrick, Visible = false }; fieldErrors.Add(key, error); editor.Controls.Add(error, 1, i * 3 + 2); editor.SetColumnSpan(error, 2);
             }
             editor.Controls.Add(enabled, 1, 15); editor.SetColumnSpan(enabled, 2);
-            HelpLabel startHelp = new HelpLabel("这个勾选决定打开程序后是否开始监测。Windows 登录自启动需要在托盘菜单中单独注册。"); editor.Controls.Add(startHelp, 1, 16); editor.SetColumnSpan(startHelp, 2);
+            HelpLabel startHelp = new HelpLabel("只控制打开托盘时是否自动监测；不勾选也能手动启动。共用输出的备用配置不能同时运行。"); editor.Controls.Add(startHelp, 1, 16); editor.SetColumnSpan(startHelp, 2);
             HelpLabel note = new HelpLabel("日志保存位置由配置文件决定。新增账号请准备另一份配置，并为它使用独立的日志、CSV 和状态文件，避免互相覆盖。"); editor.Controls.Add(note, 0, 17); editor.SetColumnSpan(note, 3);
             scroll.Controls.Add(editor); profiles.Controls.Add(scroll, 1, 0); root.Controls.Add(profiles);
             FlowLayoutPanel footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true, FlowDirection = FlowDirection.RightToLeft, Margin = new Padding(3, 12, 3, 3), Padding = new Padding(0, 8, 0, 0) };
@@ -167,6 +223,7 @@ namespace SteamMonitorTray {
             pages.SelectedIndexChanged += delegate { SyncPageLayout(); if (pages.SelectedTab == generalPage) RefreshStartupState(); };
             SyncPageLayout();
             shell.TextChanged += delegate { Changed(); }; python.TextChanged += delegate { Changed(); };
+            enabled.CheckedChanged += delegate { Changed(); }; restart.CheckedChanged += delegate { Changed(); }; mode.SelectedIndexChanged += delegate { Changed(); };
             RebuildList(); CaptureText(this); L.LanguageChanged += ApplyLanguage; ApplyLanguage();
             NormalizeFonts();
             Shown += delegate {
@@ -174,7 +231,7 @@ namespace SteamMonitorTray {
                 if (StartPosition == FormStartPosition.CenterScreen) CenterToScreen();
                 RefreshIndicators(); healthTimer.Start();
             };
-            healthTimer.Tick += delegate { RefreshIndicators(); RefreshStartupState(); };
+            healthTimer.Tick += delegate { if (!list.Dragging) { RefreshIndicators(); RefreshStartupState(); } };
             Activated += delegate { RefreshStartupState(); };
         }
         private TableLayoutPanel Table(int rows) {
@@ -265,7 +322,7 @@ namespace SteamMonitorTray {
         }
         private void UpdateTip(TextBox box) { tips.SetToolTip(box, L.Text(tipKeys[box]) + (String.IsNullOrEmpty(box.Text) ? "" : Environment.NewLine + box.Text)); }
         private void Changed() {
-            if (loading) return; revision++; inspectionErrors.Clear(); RefreshIndicators();
+            if (loading) return; revision++; inspectionErrors.Clear(); inspectionWarnings.Clear(); RefreshIndicators();
         }
         internal void SetSessionsExist(bool exist) { if (!pausedForEdit && locked != exist) { locked = exist; UpdateControls(); } }
         internal void BeginPreparing(string message) { pausedForEdit = true; preparing = true; locked = true; progress = message; progressDetails = null; UpdateControls(); }
@@ -277,6 +334,9 @@ namespace SteamMonitorTray {
             foreach (TextBox box in fields.Values) { box.ReadOnly = !editable; box.BackColor = SystemColors.Window; box.ForeColor = SystemColors.WindowText; }
             foreach (Button browse in profileBrowse) browse.Enabled = editable;
             enabled.Enabled = editable; add.Enabled = remove.Enabled = !locked && !preparing && !saving;
+            moveUp.Enabled = editable && selected > 0; moveDown.Enabled = editable && selected < draft.Profiles.Count - 1;
+            moveUp.AccessibleName = L.Text("上移配置"); moveDown.AccessibleName = L.Text("下移配置"); tips.SetToolTip(moveUp, moveUp.AccessibleName); tips.SetToolTip(moveDown, moveDown.AccessibleName);
+            openWindow.Enabled = selected >= 0 && !preparing && !saving && !checking;
             prepare.Visible = locked; prepare.Enabled = !preparing && !saving;
             prepare.Text = L.Text(pausedForEdit ? "重试进入编辑模式" : "停止监测并编辑");
             recheck.Enabled = draft.Profiles.Count > 0 && !checking && !saving && !preparing;
@@ -300,20 +360,95 @@ namespace SteamMonitorTray {
         private Profile CurrentProfile() {
             if (selected < 0 || selected >= draft.Profiles.Count) return null;
             Profile p = draft.Profiles[selected].Copy();
-            p.Name = fields["Name"].Text.Trim(); p.WorkingDirectory = fields["WorkingDirectory"].Text.Trim(); p.ConfigFile = fields["ConfigFile"].Text.Trim(); p.EnvFile = fields["EnvFile"].Text.Trim(); p.Executable = fields["Executable"].Text.Trim(); p.Enabled = enabled.Checked; return p;
+            p.Name = fields["Name"].Text.Trim(); p.WorkingDirectory = fields["WorkingDirectory"].Text.Trim(); p.ConfigFile = fields["ConfigFile"].Text.Trim(); p.EnvFile = fields["EnvFile"].Text.Trim(); p.Executable = fields["Executable"].Text.Trim(); p.AutoStart = enabled.Checked; return p;
         }
         private void CommitProfile() { if (!locked && selected >= 0) draft.Profiles[selected] = CurrentProfile(); }
         private void SelectProfile() {
             CommitProfile(); selected = list.SelectedIndex; loading = true;
             try {
                 if (selected < 0) { foreach (TextBox box in fields.Values) box.Clear(); enabled.Checked = false; }
-                else { Profile p = draft.Profiles[selected]; fields["Name"].Text = p.Name; fields["WorkingDirectory"].Text = p.WorkingDirectory; fields["ConfigFile"].Text = p.ConfigFile; fields["EnvFile"].Text = p.EnvFile; fields["Executable"].Text = p.Executable; enabled.Checked = p.Enabled; }
+                else { Profile p = draft.Profiles[selected]; fields["Name"].Text = p.Name; fields["WorkingDirectory"].Text = p.WorkingDirectory; fields["ConfigFile"].Text = p.ConfigFile; fields["EnvFile"].Text = p.EnvFile; fields["Executable"].Text = p.Executable; enabled.Checked = p.AutoStart; }
             } finally { loading = false; }
             UpdateControls(); RefreshIndicators();
         }
-        private void RebuildList() {
+        private void RebuildList(int position = 0) {
             loading = true; selected = -1; list.Items.Clear(); foreach (Profile p in draft.Profiles) list.Items.Add(p.Name);
-            if (list.Items.Count > 0) list.SelectedIndex = 0; loading = false; SelectProfile();
+            if (list.Items.Count > 0) list.SelectedIndex = Math.Max(0, Math.Min(position, list.Items.Count - 1)); loading = false; SelectProfile();
+        }
+        private string DragProfileId(DragEventArgs e) {
+            if (locked || saving || preparing || e.Data == null || (e.AllowedEffect & DragDropEffects.Move) == 0 || !e.Data.GetDataPresent("SteamMonitorTray.Profile")) return null;
+            string id = e.Data.GetData("SteamMonitorTray.Profile") as string;
+            return draft.Profiles.Any(p => p.Id == id) ? id : null;
+        }
+        private void UpdateDrag(object sender, DragEventArgs e) {
+            if (DragProfileId(e) == null) { e.Effect = DragDropEffects.None; ClearInsertion(); return; }
+            e.Effect = DragDropEffects.Move;
+            Point point = list.PointToClient(new Point(e.X, e.Y));
+            UpdateInsertion(point); UpdateDragScroll(point);
+        }
+        private Rectangle InsertionBounds(int position) {
+            if (position < 0 || list.Items.Count == 0) return Rectangle.Empty;
+            Rectangle row = list.GetItemRectangle(Math.Min(position, list.Items.Count - 1));
+            int thickness = LogicalToDeviceUnits(2);
+            int y = position < list.Items.Count ? row.Top : row.Bottom - thickness;
+            return new Rectangle(row.Left, y - thickness, row.Width, thickness * 3);
+        }
+        private void SetInsertion(int position) {
+            if (position == insertion) return;
+            Rectangle previous = InsertionBounds(insertion); insertion = position;
+            Rectangle next = InsertionBounds(insertion);
+            if (!previous.IsEmpty) list.Invalidate(previous);
+            if (!next.IsEmpty) list.Invalidate(next);
+        }
+        private void UpdateInsertion(Point point) {
+            int index = list.IndexFromPoint(point);
+            SetInsertion(index < 0 ? (point.Y < 0 ? list.TopIndex : list.Items.Count) : index + (point.Y > list.GetItemRectangle(index).Top + list.ItemHeight / 2 ? 1 : 0));
+        }
+        private int DragScrollDirection(Point point) {
+            if (!list.ClientRectangle.Contains(point)) return 0;
+            int visibleRows = Math.Max(1, list.ClientSize.Height / list.ItemHeight);
+            int maxTop = Math.Max(0, list.Items.Count - visibleRows);
+            int edge = Math.Max(LogicalToDeviceUnits(12), list.ItemHeight);
+            if (point.Y < edge && list.TopIndex > 0) return -1;
+            if (point.Y >= list.ClientSize.Height - edge && list.TopIndex < maxTop) return 1;
+            return 0;
+        }
+        private void UpdateDragScroll(Point point) {
+            if (DragScrollDirection(point) == 0) dragTimer.Stop();
+            else if (!dragTimer.Enabled) dragTimer.Start();
+        }
+        internal void ScrollDrag(Point point) {
+            int direction = insertion < 0 ? 0 : DragScrollDirection(point);
+            if (direction == 0) { dragTimer.Stop(); return; }
+            list.TopIndex += direction; UpdateInsertion(point); UpdateDragScroll(point);
+        }
+        private void ClearInsertion() { dragTimer.Stop(); SetInsertion(-1); }
+        internal void MoveProfile(int source, int target) {
+            if (locked || preparing || saving || source < 0 || target < 0 || source >= draft.Profiles.Count || target >= draft.Profiles.Count || source == target) return;
+            CommitProfile(); string id = selected < 0 ? null : draft.Profiles[selected].Id;
+            Profile p = draft.Profiles[source]; draft.Profiles.RemoveAt(source); draft.Profiles.Insert(target, p); revision++; lastCheckedRevision = -1;
+            RebuildList(draft.Profiles.FindIndex(item => item.Id == id));
+        }
+        internal void ReturnToView(Settings saved, bool sessionsExist) {
+            string id = selected < 0 ? null : draft.Profiles[selected].Id;
+            original = Json.ReadText<Settings>(Json.Text(saved)); draft = Json.ReadText<Settings>(Json.Text(saved));
+            pausedForEdit = preparing = false; locked = sessionsExist; progress = progressDetails = null;
+            RebuildList(draft.Profiles.FindIndex(p => p.Id == id)); UpdateControls();
+        }
+        internal async Task OpenWindowAsync(bool confirmChanges) {
+            if (selected < 0 || preparing || saving || checking) return;
+            string currentId = draft.Profiles[selected].Id;
+            if (SessionExists != null && SessionExists(currentId)) { if (RestoreWindowRequested != null) RestoreWindowRequested(currentId); return; }
+            CommitProfile(); draft.PythonPath = python.Text.Trim(); draft.ShellPath = shell.Text.Trim(); draft.AutomaticRestart = restart.Checked;
+            draft.LaunchMode = new[] { "AlwaysWindow", "ManualWindowStartupTray", "AlwaysTray" }[mode.SelectedIndex];
+            Settings snapshot = Json.ReadText<Settings>(Json.Text(draft)); string id = snapshot.Profiles[selected].Id;
+            if (confirmChanges && Json.Text(snapshot) != Json.Text(original) && MessageBox.Show(this, L.Text("保存修改并打开 PowerShell？不会自动开始监测。"), L.Text("保存并打开"), MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+            saving = true; UpdateControls();
+            try {
+                await Task.Run(delegate { Validation.ForSave(snapshot, original); Validation.ForStart(snapshot, snapshot.Profiles.Find(p => p.Id == id)); });
+                if (!IsDisposed && WindowRequested != null) WindowRequested(snapshot, id);
+            } catch (Exception ex) { if (!IsDisposed) MessageBox.Show(this, Program.SafeError(ex), L.Text("检查设置"), MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            finally { if (!IsDisposed) { saving = false; UpdateControls(); } }
         }
         private void RefreshIndicators() {
             if (loading || IsDisposed) return;
@@ -333,37 +468,46 @@ namespace SteamMonitorTray {
                 Profile p = i == selected ? current : draft.Profiles[i];
                 bool missing = (i == selected ? issues : Validation.PathIssues(p)).Count > 0;
                 if (missing && !inspectionErrors.ContainsKey(p.Id)) lastCheckedRevision = -1;
-                string marker = missing ? L.Text("（文件缺失）") : (inspectionErrors.ContainsKey(p.Id) ? L.Text("（配置需检查）") : "");
+                string marker = missing ? L.Text("（文件缺失）") : (inspectionErrors.ContainsKey(p.Id) ? L.Text("（配置需检查）") : (inspectionWarnings.ContainsKey(p.Id) ? L.Text("（共用输出）") : ""));
                 string text = marker.Length == 0 ? p.Name : marker.Trim() + " " + p.Name;
                 if (!String.Equals(list.Items[i], text)) list.Items[i] = text;
             } } finally { loading = false; }
             string error;
             string summary = lastCheckedRevision == revision ? L.Text("检查完成：{0} 个配置通过，{1} 个需要处理。", draft.Profiles.Count - inspectionErrors.Count, inspectionErrors.Count) : "";
-            checkStatus.Text = checking ? L.Text("正在检查配置…") : (current != null && inspectionErrors.TryGetValue(current.Id, out error) ? summary + Environment.NewLine + String.Join(Environment.NewLine, error.Split('\n').Select(line => L.Text(line.Trim()))) : summary);
-            checkStatus.ForeColor = inspectionErrors.Count > 0 ? Color.Firebrick : Color.DimGray; checkStatus.Visible = checkStatus.Text.Length > 0;
+            // Publish the complete result once. Publishing a one-line summary first
+            // collapses the docked status panel before its warning expands it again.
+            string statusText = checking ? L.Text("正在检查配置…") : (current != null && inspectionErrors.TryGetValue(current.Id, out error) ? summary + Environment.NewLine + String.Join(Environment.NewLine, error.Split('\n').Select(line => L.Text(line.Trim()))) : summary);
+            if (!checking && current != null && inspectionWarnings.ContainsKey(current.Id)) statusText += Environment.NewLine + L.Text(inspectionWarnings[current.Id]);
+            checkStatus.Text = statusText;
+            checkStatus.ForeColor = inspectionErrors.Count > 0 ? Color.Firebrick : Color.DimGray; checkStatus.Visible = statusText.Length > 0;
         }
         internal async Task RecheckAsync() {
             if (checking || saving || preparing) return;
             CommitProfile(); Settings snapshot = Json.ReadText<Settings>(Json.Text(draft)); snapshot.PythonPath = python.Text.Trim(); int checkedRevision = revision;
             checking = true; UpdateControls(); RefreshIndicators();
+            Dictionary<string, string> warnings = new Dictionary<string, string>();
             Dictionary<string, string> result = await Task.Run(delegate {
                 Dictionary<string, string> errors = new Dictionary<string, string>();
-                Dictionary<string, string> outputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, List<Profile>> outputs = new Dictionary<string, List<Profile>>(StringComparer.OrdinalIgnoreCase);
                 foreach (Profile p in snapshot.Profiles) try {
                     var missing = Validation.PathIssues(p);
                     if (missing.Count > 0) { errors[p.Id] = String.Join("\n", missing.Values); continue; }
                     Inspection inspection = Validation.Inspect(p, snapshot.PythonPath);
-                    if (p.Enabled) foreach (string path in inspection.Outputs) {
-                        string other;
-                        if (outputs.TryGetValue(path, out other)) errors[p.Id] = errors[other] = "配置间存在重复输出文件，请为每个实例设置独立的日志、CSV 和状态文件。";
-                        else outputs.Add(path, p.Id);
+                    foreach (string path in inspection.Outputs) {
+                        List<Profile> owners;
+                        if (!outputs.TryGetValue(path, out owners)) { owners = new List<Profile>(); outputs.Add(path, owners); }
+                        foreach (Profile other in owners) {
+                            if (p.AutoStart && other.AutoStart) errors[p.Id] = errors[other.Id] = "共用输出的配置不能同时自动监测。";
+                            else warnings[p.Id] = warnings[other.Id] = "共用输出，不能同时运行；切换时会正常关闭另一配置的空闲 PowerShell。";
+                        }
+                        owners.Add(p);
                     }
                 }
                     catch (Exception ex) { errors[p.Id] = ex is InvalidDataException ? ex.Message : "无法安全检查配置；请确认 Python 可运行。"; }
                 return errors;
             });
             if (IsDisposed) return; checking = false;
-            if (checkedRevision == revision) { lastCheckedRevision = revision; inspectionErrors.Clear(); foreach (var pair in result) inspectionErrors.Add(pair.Key, pair.Value); }
+            if (checkedRevision == revision) { lastCheckedRevision = revision; inspectionErrors.Clear(); inspectionWarnings.Clear(); foreach (var pair in result) inspectionErrors.Add(pair.Key, pair.Value); foreach (var pair in warnings) inspectionWarnings.Add(pair.Key, pair.Value); }
             UpdateControls(); RefreshIndicators();
         }
         private void AddProfile() {
@@ -390,7 +534,7 @@ namespace SteamMonitorTray {
             finally { if (!IsDisposed) { saving = false; UpdateControls(); RefreshIndicators(); } }
         }
         protected override void Dispose(bool disposing) {
-            if (disposing) { L.LanguageChanged -= ApplyLanguage; healthTimer.Dispose(); tips.Dispose(); if (helpFont != null) helpFont.Dispose(); }
+            if (disposing) { L.LanguageChanged -= ApplyLanguage; healthTimer.Dispose(); dragTimer.Dispose(); tips.Dispose(); if (helpFont != null) helpFont.Dispose(); }
             base.Dispose(disposing);
         }
     }

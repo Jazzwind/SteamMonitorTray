@@ -137,7 +137,7 @@ internal static class Tests {
     }
     private static void CheckSettingsWorkflow() {
         Settings s = Settings.Defaults(); s.LaunchMode = "AlwaysTray"; s.RetrySeconds = new int[] { 1, 1, 1 };
-        Profile a = Fixture("edit-running", false), b = Fixture("edit-stopped", false), c = Fixture("edit-disabled", false); c.Enabled = false;
+        Profile a = Fixture("edit-running", false), b = Fixture("edit-stopped", false), c = Fixture("edit-disabled", false); c.AutoStart = false;
         s.Profiles.Add(a); s.Profiles.Add(b); s.Profiles.Add(c); OpenManager(s, "edit-manager-data"); TrayContext context = (TrayContext)manager;
         Wait(delegate { return ManagedStatus(a) == "监测进程运行" && ManagedStatus(b) == "监测进程运行" && File.Exists(Path.Combine(a.WorkingDirectory, "fixture.starts")) && File.Exists(Path.Combine(b.WorkingDirectory, "fixture.starts")); }, "start editing workflow fixtures", 15);
         ManagerAction("Stop", ManagedRuntime(b));
@@ -157,6 +157,7 @@ internal static class Tests {
         Wait(delegate { return !form.IsLocked && !form.IsPreparing && !AnyManagerAlive(); }, "stop, close all shells and unlock same settings window", 15);
         Assert(File.ReadAllText(Path.Combine(a.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "stop-and-edit performs real Ctrl+C cleanup");
         UiField<Dictionary<string, TextBox>>(form, "fields")["Name"].Text = "Saved fixture name";
+        UiField<CheckBox>(form, "enabled").Checked = false;
         AwaitSettings(form.SaveAsync(true));
         Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 2; }, "save resumes originally running profile", 15);
         SessionClient resumedClient = (SessionClient)ManagedRuntime(a).GetType().GetField("Client").GetValue(ManagedRuntime(a));
@@ -202,9 +203,170 @@ internal static class Tests {
         Assert(File.ReadAllText(Path.Combine(a.WorkingDirectory, "fixture.cleanup")).Contains("count=1"), "pending stop sends exactly one Ctrl+C after Started");
         ManagerAction("Quit", null); Wait(delegate { return !AnyManagerAlive(); }, "workflow manager closes its final PowerShell session", 10); Application.DoEvents(); manager = null;
     }
+    private static void CheckAlternateVersions() {
+        Settings settings = Settings.Defaults(); settings.LaunchMode = "AlwaysTray";
+        Profile a = Fixture("alternate", false); a.AutoStart = false;
+        Profile b = a.Copy(); b.Id = Guid.NewGuid().ToString("N"); b.Name = "alternate PR2";
+        Profile independent = Fixture("independent", false); independent.AutoStart = false;
+        settings.Profiles.Add(a); settings.Profiles.Add(b); settings.Profiles.Add(independent);
+        OpenManager(settings, "alternate-manager-data"); TrayContext context = (TrayContext)manager;
+        Application.DoEvents(); Assert(!ManagerAlive(a) && !ManagerAlive(b), "unchecked auto-start leaves profiles stopped");
+        MenuEntry entry = context.CreateMenuSnapshot().Items.First(item => item.Key == "Profile." + a.Id);
+        Assert(entry.Children.First(item => item.Key.EndsWith(".Start")).Enabled, "manual start remains enabled when automatic start is off");
+        context.OpenProfileWindow(a.Id);
+        Wait(delegate { return ManagerAlive(a) && (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "open profile creates an idle interactive shell", 15);
+        SessionClient client = (SessionClient)ManagedRuntime(a).GetType().GetField("Client").GetValue(ManagedRuntime(a));
+        Assert(!File.Exists(Path.Combine(a.WorkingDirectory, "fixture.starts")), "opening a shell does not start monitoring");
+        context.OpenProfileWindow(a.Id); Assert(Object.ReferenceEquals(client, ManagedRuntime(a).GetType().GetField("Client").GetValue(ManagedRuntime(a))), "restoring window reuses the original session");
+        string marker = Path.Combine(a.WorkingDirectory, "preserved-input.txt");
+        Input(client, "Set-Content -LiteralPath '" + marker + "' -Value preserved", false);
+        context.OpenProfileWindow(b.Id);
+        Wait(delegate { return UiField<object>(context, "pendingSwitch") == null; }, "unsubmitted input cancels automatic version switch", 10);
+        Assert(client.Alive && !ManagerAlive(b) && !File.Exists(marker), "switch refuses to discard unsubmitted PowerShell input");
+        Input(client, "\n", false); Wait(delegate { return File.Exists(marker) && (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "preserved input remains executable", 10);
+        Input(client, "Start-Sleep -Seconds 2\n", false); Wait(delegate { return !(bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "other PowerShell command begins", 5);
+        context.OpenProfileWindow(b.Id); Assert(client.Alive && !ManagerAlive(b), "switch does not interrupt another PowerShell command");
+        Wait(delegate { return (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "other PowerShell command finishes", 8);
+        Input(client, "steam_monitor\n", false);
+        Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.Exists(Path.Combine(a.WorkingDirectory, "fixture.starts")); }, "manual shell command updates manager state without auto-start", 15);
+        ManagerStart(b); Assert(!ManagerAlive(b), "manual tray start cannot bypass an active output reservation");
+        managerType.GetMethod("Receive", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(manager, new object[] { ManagedRuntime(a), new Wire("ConnectionEnded", "") });
+        context.OpenProfileWindow(b.Id); Assert(client.Alive && !ManagerAlive(b), "IPC close notification does not release a living host reservation");
+        ManagerAction("Stop", ManagedRuntime(a));
+        Wait(delegate { return ManagedStatus(a) == "已停止" && (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "manual-only profile stops with Ctrl+C and returns to prompt", 10);
+        ManagerStart(b);
+        Wait(delegate { return !ManagerAlive(a) && ManagedStatus(b) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 2; }, "starting alternate automatically closes idle old shell and starts exactly once", 15);
+        Assert(File.ReadAllText(Path.Combine(a.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "automatic switching preserves completed cleanup and existing output");
+        ManagerAction("Stop", ManagedRuntime(b));
+        Wait(delegate { return ManagedStatus(b) == "已停止" && (bool)ManagedRuntime(b).GetType().GetField("Prompt").GetValue(ManagedRuntime(b)); }, "alternate stops normally before opening old version", 10);
+        Type switchType = typeof(TrayContext).GetNestedType("PendingSwitch", BindingFlags.NonPublic); object timeoutSwitch = Activator.CreateInstance(switchType, true);
+        Array owners = Array.CreateInstance(ManagedRuntime(b).GetType(), 1); owners.SetValue(ManagedRuntime(b), 0);
+        switchType.GetField("Target", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(timeoutSwitch, ManagedRuntime(a));
+        switchType.GetField("Owners", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(timeoutSwitch, owners);
+        switchType.GetField("Deadline", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(timeoutSwitch, DateTime.UtcNow.AddSeconds(-1));
+        ManagedRuntime(b).GetType().GetField("ExitSent").SetValue(ManagedRuntime(b), true);
+        typeof(TrayContext).GetField("pendingSwitch", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(context, timeoutSwitch); ManagerAction("Tick", null);
+        Assert(UiField<object>(context, "pendingSwitch") == null && ManagerAlive(b) && !(bool)ManagedRuntime(b).GetType().GetField("ExitSent").GetValue(ManagedRuntime(b)), "timed-out switch preserves the old shell and allows a fresh retry");
+        context.OpenProfileWindow(a.Id);
+        Wait(delegate { return !ManagerAlive(b) && ManagerAlive(a) && (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "opening alternate automatically hands over to an idle shell", 15);
+        Assert(File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 2, "window-only switch does not start monitoring");
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Invoke();
+        Wait(delegate { return ManagedStatus(independent) == "监测进程运行" && File.Exists(Path.Combine(independent.WorkingDirectory, "fixture.starts")); }, "Start All includes manual-only independent profiles", 15);
+        Wait(delegate { return ManagedStatus(a) == "监测进程运行" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 3; }, "Start All starts the first shared-output profile", 15);
+        Assert(!ManagerAlive(b), "Start All skips later conflicting profiles");
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Invoke();
+        Application.DoEvents();
+        Assert(File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 3, "repeated Start All does not duplicate a running monitor");
+        settings.Profiles.Reverse();
+        string[] menuIds = context.CreateMenuSnapshot().Items.Where(item => item.Key != null && item.Key.StartsWith("Profile.")).Select(item => item.Key).ToArray();
+        Assert(menuIds[0] == "Profile." + independent.Id && menuIds[2] == "Profile." + a.Id, "tray menu follows saved profile ordering");
+        settings.Profiles.Remove(independent); settings.Profiles.Add(independent);
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StopAll").Invoke();
+        Wait(delegate { return ManagedStatus(a) == "已停止" && ManagedStatus(independent) == "已停止" && (bool)ManagedRuntime(a).GetType().GetField("Prompt").GetValue(ManagedRuntime(a)); }, "batch monitors stop gracefully before reordered start", 10);
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Invoke();
+        Wait(delegate { return ManagedStatus(b) == "监测进程运行" && ManagedStatus(independent) == "监测进程运行" && !ManagerAlive(a) && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length >= 4; }, "reordered Start All chooses the new first alternate and starts independent profiles during idle handover", 15);
+        Assert(File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 4, "reordered batch handover starts the winner exactly once");
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StopAll").Invoke();
+        Wait(delegate { return ManagedStatus(b) == "已停止" && ManagedStatus(independent) == "已停止" && (bool)ManagedRuntime(b).GetType().GetField("Prompt").GetValue(ManagedRuntime(b)); }, "ready to cancel batch during handover", 10);
+        settings.Profiles.Remove(a); settings.Profiles.Insert(0, a);
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Invoke();
+        Assert(UiField<object>(context, "pendingSwitch") != null && ((ICollection)UiField<object>(context, "batchStarts")).Count == 1, "batch waits for idle handover before starting later independent profiles");
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "StopAll").Invoke();
+        Wait(delegate { return !ManagerAlive(b); }, "cancelled handover lets the already exiting idle shell finish", 10);
+        Assert(UiField<object>(context, "pendingSwitch") == null && ((ICollection)UiField<object>(context, "batchStarts")).Count == 0 && !ManagerAlive(a) && ManagedStatus(independent) == "已停止" && File.ReadAllLines(Path.Combine(a.WorkingDirectory, "fixture.starts")).Length == 4, "Stop All cancels pending handover and queued starts without a late restart");
+        ManagerAction("Quit", null); Wait(delegate { return !AnyManagerAlive(); }, "alternate-version fixture closes normally", 15); Application.DoEvents(); manager = null;
+        Settings failureSettings = Settings.Defaults(); Profile failure = Fixture("creation-failure", false); failure.AutoStart = false; failureSettings.Profiles.Add(failure);
+        string failureRoot = Path.Combine(root, "creation-failure-data"); Directory.CreateDirectory(failureRoot); File.WriteAllText(Path.Combine(failureRoot, "sessions"), "block directory creation");
+        OpenManager(failureSettings, "creation-failure-data"); ((TrayContext)manager).OpenProfileWindow(failure.Id);
+        Assert(!UiField<OutputLeases>(manager, "leases").Contains(failure.Id), "session creation failure releases output reservation");
+        ManagerAction("Quit", null); Application.DoEvents(); manager = null;
+    }
+    private static void CheckBatchPriority() {
+        Settings settings = Settings.Defaults(); settings.LaunchMode = "AlwaysTray";
+        Profile first = Fixture("batch-first", false), skipped = Fixture("batch-skipped", false), last = Fixture("batch-last", false);
+        foreach (Profile p in new[] { first, skipped, last }) p.AutoStart = false;
+        string sharedState = Path.Combine(root, "batch-shared-state.json"), sharedCsv = Path.Combine(root, "batch-shared.csv");
+        File.AppendAllText(first.ConfigFile, "DISABLE_LOGGING = True\nSTEAM_STATUS_FILE = " + Json.Text(sharedState) + "\n");
+        File.AppendAllText(skipped.ConfigFile, "DISABLE_LOGGING = True\nSTEAM_STATUS_FILE = " + Json.Text(sharedState) + "\nCSV_FILE = " + Json.Text(sharedCsv) + "\n");
+        File.AppendAllText(last.ConfigFile, "DISABLE_LOGGING = True\nCSV_FILE = " + Json.Text(sharedCsv) + "\n");
+        Profile invalid = first.Copy(); invalid.Id = Guid.NewGuid().ToString("N"); invalid.Name = "invalid first"; invalid.Executable += ".missing";
+        settings.Profiles.AddRange(new[] { invalid, first, skipped, last });
+        OpenManager(settings, "batch-priority-data"); Application.DoEvents();
+        ((TrayContext)manager).CreateMenuSnapshot().Items.First(item => item.Key == "StartAll").Invoke();
+        Wait(delegate { return ManagedStatus(first) == "监测进程运行" && ManagedStatus(last) == "监测进程运行" && File.Exists(Path.Combine(first.WorkingDirectory, "fixture.starts")) && File.Exists(Path.Combine(last.WorkingDirectory, "fixture.starts")); }, "invalid leading profile and rejected intermediate outputs do not block later valid batch winners", 15);
+        Assert(!ManagerAlive(invalid) && !ManagerAlive(skipped), "batch skips invalid profiles and only later direct output collisions");
+        ManagerAction("Quit", null); Wait(delegate { return !AnyManagerAlive(); }, "priority batch cleans up with Ctrl+C", 15); Application.DoEvents(); manager = null;
+    }
+    private static void CheckNativeWindowStartup() {
+        Settings settings = Settings.Defaults(); settings.LaunchMode = "AlwaysTray";
+        Profile profile = Fixture("native-window-startup", false); profile.AutoStart = false; settings.Profiles.Add(profile);
+        OpenManager(settings, "native-window-startup-data"); TrayContext context = (TrayContext)manager;
+        bool visible = false; int ticks = 0;
+        using (System.Windows.Forms.Timer driver = new System.Windows.Forms.Timer { Interval = 150 }) {
+            driver.Tick += delegate {
+                if (++ticks == 1) { context.RequestSettings(); return; }
+                SettingsForm form = UiField<SettingsForm>(context, "settingsForm");
+                if (form != null && form.Visible && Native.IsWindowVisible(form.Handle)) {
+                    visible = true; form.Close(); driver.Stop(); ManagerAction("Quit", null);
+                } else if (ticks >= 25) { if (form != null) form.Close(); driver.Stop(); ManagerAction("Quit", null); }
+            };
+            driver.Start(); Application.Run(context);
+        }
+        manager = null;
+        Assert(visible, "first settings form is natively visible in Application.Run despite hidden process startup");
+    }
+    private static void CheckConsoleColors() {
+        var environment = new System.Collections.Specialized.StringDictionary(); environment["CODEX_THREAD_ID"] = "fixture"; environment["NO_COLOR"] = "1"; environment["TERM"] = "dumb";
+        Native.NormalizeConsoleEnvironment(environment, null, null); Assert(!environment.ContainsKey("NO_COLOR") && !environment.ContainsKey("TERM"), "known automation monochrome defaults do not leak into interactive shells");
+        environment["NO_COLOR"] = "1"; environment["TERM"] = "dumb";
+        Native.NormalizeConsoleEnvironment(environment, "1", "custom"); Assert(environment["NO_COLOR"] == "1" && environment["TERM"] == "custom", "explicit Windows console preferences remain authoritative");
+        environment.Remove("CODEX_THREAD_ID"); Native.NormalizeConsoleEnvironment(environment, null, null); Assert(environment["NO_COLOR"] == "1", "ordinary terminal NO_COLOR preference is preserved");
+        string savedTag = Environment.GetEnvironmentVariable("CODEX_THREAD_ID"), savedColor = Environment.GetEnvironmentVariable("NO_COLOR"), savedTerm = Environment.GetEnvironmentVariable("TERM");
+        try {
+            Environment.SetEnvironmentVariable("CODEX_THREAD_ID", "fixture"); Environment.SetEnvironmentVariable("NO_COLOR", "1"); Environment.SetEnvironmentVariable("TERM", "dumb");
+            Profile fixture = Fixture("console-color", false); fixture.Executable = Path.Combine(Files.Bin, "ColorProbe.exe");
+            SessionClient client = Open(fixture, Settings.Defaults()); Input(client, "steam_monitor\n", false);
+            Wait(delegate { return File.Exists(Path.Combine(fixture.WorkingDirectory, "fixture.color-attributes.txt")) && Has(client, "Stopped", 0) && Has(client, "Prompt", 0); }, "upstream colour probe finishes", 20);
+            Assert(File.ReadAllText(Path.Combine(fixture.WorkingDirectory, "fixture.color.json")).Contains("\"colored\": true") && File.ReadAllText(Path.Combine(fixture.WorkingDirectory, "fixture.color-attributes.txt")) == "green", "installed upstream emits actual green console cells in a managed PowerShell session");
+            Assert(Environment.GetEnvironmentVariable("NO_COLOR") == "1", "console normalization does not mutate the tray process environment");
+            client.Send("Exit"); Wait(delegate { return !client.Alive; }, "colour probe shell exits normally", 10);
+        } finally { Environment.SetEnvironmentVariable("CODEX_THREAD_ID", savedTag); Environment.SetEnvironmentVariable("NO_COLOR", savedColor); Environment.SetEnvironmentVariable("TERM", savedTerm); }
+    }
+    private static void CheckSettingsMenu() {
+        Settings settings = Settings.Defaults(); settings.LaunchMode = "AlwaysTray";
+        Profile a = Fixture("settings-menu", false), b = a.Copy(); b.Id = Guid.NewGuid().ToString("N"); b.AutoStart = false;
+        settings.Profiles.Add(a); settings.Profiles.Add(b); OpenManager(settings, "settings-menu-data"); TrayContext context = (TrayContext)manager;
+        Wait(delegate { return File.Exists(Path.Combine(a.WorkingDirectory, "fixture.starts")); }, "settings menu fixture ready", 15);
+        Thread worker = null; Exception workerError = null; bool timedOut = false;
+        using (System.Windows.Forms.Timer watchdog = new System.Windows.Forms.Timer { Interval = 12000 })
+        using (System.Windows.Forms.Timer select = new System.Windows.Forms.Timer { Interval = 200 }) {
+            watchdog.Tick += delegate { timedOut = true; MenuNative.PostMessageW(context.MenuPresenter.Owner, 0x1F, IntPtr.Zero, IntPtr.Zero); };
+            select.Tick += delegate {
+                select.Stop(); IntPtr popup = NativeMenuTests.PopupWindow();
+                worker = new Thread(delegate() {
+                    try {
+                        AutomationElement rootMenu = AutomationElement.FromHandle(popup);
+                        AutomationElement item = rootMenu.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.NameProperty, "设置与多配置管理…"));
+                        ((InvokePattern)item.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                    } catch (Exception ex) { workerError = ex; MenuNative.PostMessageW(context.MenuPresenter.Owner, 0x1F, IntPtr.Zero, IntPtr.Zero); }
+                }); worker.IsBackground = true; worker.Start();
+            };
+            watchdog.Start(); select.Start(); context.ShowMenu(new System.Drawing.Point(40, 40)); watchdog.Stop();
+        }
+        if (worker != null) worker.Join(1000); if (workerError != null) throw workerError;
+        if (timedOut) throw new Exception("Native Settings menu automation timed out.");
+        Wait(delegate { SettingsForm shown = UiField<SettingsForm>(context, "settingsForm"); return shown != null && shown.Visible && Native.IsWindowVisible(shown.Handle); }, "native Settings command opens a natively visible window with two alternate profiles", 10);
+        SettingsForm form = UiField<SettingsForm>(context, "settingsForm"); form.Hide();
+        context.CreateMenuSnapshot().Items.First(item => item.Key == "Settings").Invoke();
+        Assert(form.Visible && Native.IsWindowVisible(form.Handle), "reopening settings restores a hidden existing window");
+        form.Close(); context.CreateMenuSnapshot().Items.First(item => item.Key == "Settings").Invoke();
+        Assert(!Object.ReferenceEquals(form, UiField<SettingsForm>(context, "settingsForm")) && UiField<SettingsForm>(context, "settingsForm").Visible, "closing and reopening settings creates a fresh visible form");
+        UiField<SettingsForm>(context, "settingsForm").Close(); ManagerAction("Quit", null); Wait(delegate { return !AnyManagerAlive(); }, "settings menu fixture exits", 15); Application.DoEvents(); manager = null;
+    }
     [STAThread] public static int Main(string[] args) {
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         if (args.Length == 1 && args[0] == "--preview") return UiPreview.Run();
+        if (args.Length == 1 && args[0] == "--drag-preview") return UiPreview.RunDrag();
         IntPtr hook = IntPtr.Zero;
         try {
             root = Path.Combine(Path.GetDirectoryName(Files.Bin.TrimEnd(Path.DirectorySeparatorChar)), "artifacts", "tests", Guid.NewGuid().ToString("N"));
@@ -213,9 +375,20 @@ internal static class Tests {
             if (args.Length == 1 && args[0] == "--resize-test") { ResizeTests.Run(root, true); return 0; }
             if (args.Length == 1 && args[0] == "--font-startup") { LocalizationTests.FreshStartup(root); return 0; }
             if (args.Length == 1 && args[0] == "--settings-only") { LocalizationTests.Run(root); SettingsTests.Run(root); return 0; }
+            if (args.Length == 1 && args[0] == "--alternates-only") { CheckAlternateVersions(); CheckBatchPriority(); return 0; }
+            if (args.Length == 1 && args[0] == "--settings-menu-only") { CheckSettingsMenu(); return 0; }
+            if (args.Length == 1 && args[0] == "--colors-only") { CheckConsoleColors(); return 0; }
+            if (args.Length == 1 && args[0] == "--native-window-startup") { CheckNativeWindowStartup(); return 0; }
             if (args.Length == 1 && args[0] == "--workflow-only") { CheckSettingsWorkflow(); return 0; }
             Settings s = Settings.Defaults();
             Assert(File.Exists(s.ShellPath) && File.Exists(s.PythonPath), "dependencies discovered");
+            ProcessStartInfo nativeProbe = new ProcessStartInfo(Path.Combine(Files.Bin, "SteamMonitorTray.Tests.exe"), "--native-window-startup") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, RedirectStandardOutput = true, RedirectStandardError = true };
+            using (Process process = Process.Start(nativeProbe)) {
+                var output = process.StandardOutput.ReadToEndAsync(); var errors = process.StandardError.ReadToEndAsync();
+                Assert(process.WaitForExit(15000), "hidden-process native visibility probe completes"); Console.Write(output.Result);
+                if (process.ExitCode != 0) Console.Error.Write(errors.Result);
+                Assert(process.ExitCode == 0, "real message-loop settings visibility regression passes");
+            }
             ProcessStartInfo fontProbe = new ProcessStartInfo(Path.Combine(Files.Bin, "SteamMonitorTray.Tests.exe"), "--font-startup") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
             using (Process process = Process.Start(fontProbe)) {
                 var output = process.StandardOutput.ReadToEndAsync(); var errors = process.StandardError.ReadToEndAsync();
@@ -331,6 +504,10 @@ internal static class Tests {
             Assert(File.ReadAllText(Path.Combine(quitFixture.WorkingDirectory, "fixture.cleanup")).Contains("CTRL_C_EVENT"), "tray quit releases selection and completes real Ctrl+C cleanup");
             Application.DoEvents(); manager = null;
             CheckSettingsWorkflow();
+            CheckAlternateVersions();
+            CheckBatchPriority();
+            CheckSettingsMenu();
+            CheckConsoleColors();
             Console.WriteLine("RESULT all checks passed"); return 0;
         } catch (Exception ex) { Console.Error.WriteLine("FAIL " + ex.Message); return 1; }
         finally {

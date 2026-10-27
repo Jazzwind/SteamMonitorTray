@@ -53,7 +53,7 @@ If the profile list is empty, click **Add existing profile…** and select the f
 
 Detected PowerShell and Python paths usually need no changes. If the monitor executable is not detected, run `Get-Command steam_monitor | Select-Object -ExpandProperty Path` in PowerShell and select the returned executable.
 
-Click **Save**. Profiles enabled during first-run setup start automatically. Existing profiles can be selected without adding them again. Credentials, targets and monitoring history remain in their original files.
+Click **Save**. Profiles selected for automatic monitoring during first-run setup start automatically. Existing profiles can be selected without adding them again. Credentials, targets and monitoring history remain in their original files.
 
 An optional command-line import is available while the app is not running:
 
@@ -77,7 +77,7 @@ If a session is busy, has unsubmitted input or does not stop before the timeout 
 
 | Action after stopping to edit | Result |
 | --- | --- |
-| Save and resume monitoring | Save, then start only profiles that were running or starting before the stop and are still present, enabled and valid. Previously stopped profiles stay stopped. |
+| Save and resume monitoring | Save, then start only profiles that were running or starting before the stop and are still present and valid. Previously stopped profiles stay stopped. |
 | Save only | Save and leave monitoring stopped. |
 | Cancel or close | Discard the draft and leave stopped monitoring stopped. Sessions already stopped or closed are not automatically recreated. |
 
@@ -89,9 +89,23 @@ This page registers existing configuration paths. Monitoring features and notifi
 
 The page identifies a missing working folder, `.conf`, explicitly selected `.env` or monitor executable beside the relevant field, and marks the profile list. An empty `.env` field is allowed when using environment variables. Missing PowerShell and Python executables are reported separately. **Check configurations** checks all profiles for missing files, static configuration errors and conflicting output paths in the background, then reports passed and failed counts with per-profile details. The explanation is shown beside the action. Checks do not start monitoring, execute the `.conf` or send Steam/Discord requests or notifications.
 
-Missing profiles remain registered for repair. Existing broken profiles do not prevent saving unrelated global options or starting other valid profiles. New or changed enabled paths must pass validation before saving; conflicting outputs introduced by an edit are rejected. Disabled profiles may be retained for later repair.
+Missing profiles remain registered for repair. Existing broken profiles do not prevent saving unrelated global options or starting other valid profiles. New or changed profile paths must pass validation before saving. Profiles that share outputs cannot both be selected for automatic monitoring; manual-only alternates are allowed.
 
 Paths are checked again before a tray start. Lightweight existence checks during operation provide warnings without automatically stopping an existing session or replacing paths. A monitor may continue after a file disappears, depending on when the upstream program next accesses it; a running-process indicator is not a guarantee that file output or network requests are succeeding. After repairing paths, use **Check configurations** and start monitoring again when appropriate.
+
+### Manual start, windows and profile order (v1.4.0)
+
+The automatic-monitoring checkbox controls only startup when SteamMonitorTray opens. Unchecked profiles can still be started manually, opened in PowerShell, and included in **Start all**. Automatic retries apply only to monitoring that was actually started. **Save and resume monitoring** restores previously running profiles regardless of their automatic-start checkbox.
+
+Settings selected from the native tray menu are explicitly brought forward; hidden or minimized settings windows are restored, including when Windows starts the GUI process hidden. Use `SteamMonitorTray.exe --settings` to open Settings directly when starting the application. Dedicated shells discard only known automation-injected monochrome defaults, while preserving Windows user/machine color preferences and the monitor’s own color setting.
+
+Select a profile and use **Open PowerShell window** to restore its existing window or create an idle PowerShell prompt without starting monitoring. If there are draft changes, choose **Save and open** or cancel. The settings window remains open and returns to view mode. You can type `steam_monitor` in that dedicated prompt; normal status synchronization and Ctrl+C still work. Double-clicking the tray icon restores all existing independent windows; this version does not use terminal tabs.
+
+Use **↑ / ↓** or drag a profile to reorder it while editing. The insertion line shows where it will land; pause near the top or bottom edge to scroll a longer list. Release outside the list or press Esc to cancel dragging. The selected profile and draft fields are preserved; save to persist the order used by the list, tray menu and batch operations.
+
+Alternate versions may reference the same configuration and history files if only one is selected for automatic monitoring. **Check configurations** identifies shared output as a warning. Each dedicated PowerShell reserves its output paths until it exits. Starting or opening an alternate profile automatically closes a conflicting idle PowerShell and waits for its exit. Running monitors, other commands and unsubmitted input are never forcibly closed; busy or timed-out switches leave the new profile stopped and preserve the old session. **Start all** follows the saved profile order: it chooses the first valid profile for shared output files, skips later conflicting profiles, and starts independent profiles too. Invalid profiles are skipped without reserving their output paths. Reorder profiles to change this priority. A conflicting monitor that is already running is never interrupted automatically. This protects sessions managed by this tray app; it does not control monitor commands launched independently outside it.
+
+Settings format 2 stores `AutoStart` instead of treating `Enabled` as a manual-start permission. Existing choices, identities and order migrate automatically, with the original file preserved as `settings.json.v1.bak` before the first write. To roll back the tray executable, also restore its matching old settings backup. A separately installed monitor can instead be switched without downgrading the tray. Back up private files outside the repository, and never run alternate versions against the same outputs simultaneously.
 
 ## Native tray menu and display scaling
 
@@ -104,7 +118,7 @@ High DPI features require a Windows version supporting Per-Monitor V2 (Windows 1
 ## Tray and PowerShell windows
 
 - Double-click the tray icon to restore existing windows.
-- Start or stop all enabled profiles, or control each profile separately.
+- Start or stop profiles together, or control each profile separately.
 - Minimize a console to hide it in the tray. Its output and monitoring session are preserved.
 - Hiding or minimizing a console releases any active text selection so Quick Edit cannot pause a hidden session. Visible windows still support selecting and copying text; tray commands also release a selection before proceeding.
 - **Quit** automatically requests graceful shutdown of every monitor and then exits PowerShell. You do not need to press Ctrl+C manually before quitting.
@@ -126,7 +140,7 @@ The tray menu and settings window share these options:
 | Only when starting with Windows (default) | Show window | Tray only |
 | Hide on every launch | Tray only | Tray only |
 
-Both entry points start enabled profiles. Hidden sessions continue monitoring. This setting affects the next launch; windows can still be shown or hidden later. Hidden consoles are created hidden, rather than briefly displayed and then hidden.
+Both entry points start profiles selected for automatic monitoring. Hidden sessions continue monitoring. This setting affects the next launch; windows can still be shown or hidden later. Hidden consoles are created hidden, rather than briefly displayed and then hidden.
 
 ## Language
 
@@ -155,9 +169,9 @@ The settings section is ordered **Settings and profiles → Open local settings 
 
 ## Multiple profiles and recovery
 
-Use a separate saved monitor config for each account. Profiles may share a secrets file, but must use distinct log, CSV, state and enabled game-library snapshot files. Static Python AST inspection checks output collisions without executing the config for inspection. Save numeric Steam64 targets for straightforward path detection; vanity targets require explicit output settings as described in the Chinese guide.
+Use a separate saved monitor config for each account. Profiles monitoring different accounts may share a secrets file, but must use distinct log, CSV, state and enabled game-library snapshot files. Alternate-version profiles for the same account may share outputs under the session reservation rules above. Static Python AST inspection checks output collisions without executing the config for inspection. Save numeric Steam64 targets for straightforward path detection; vanity targets require explicit output settings as described in the Chinese guide.
 
-Profile paths are locked while PowerShell sessions exist. Stop monitoring and enter `exit` in those sessions before reopening settings to edit profiles. Global preferences remain available.
+Profile paths are locked while PowerShell sessions exist. Use **Stop monitoring and edit** to close them normally and unlock the same settings window. General preferences remain available.
 
 Unexpected nonzero exits retry after 5, 15 and 30 seconds, then stop. Ten minutes of stable operation resets the retry budget. A manual stop, keyboard Ctrl+C, normal zero exit or Quit cancels retries. Upstream-managed network recovery does not create duplicate processes. “Monitor process running” does not certify Steam API or notification delivery health.
 
@@ -175,7 +189,7 @@ Run native integration tests from an ordinary interactive Windows desktop, not a
 .\build.ps1 -Test -OutputDirectory .\artifacts\native-menu\bin
 python -m unittest discover -s tests -p 'test_*.py'
 python .\scripts\ScanPrivacy.py
-.\package.ps1 -Version 1.3.0
+.\package.ps1 -Version 1.4.0
 ```
 
 Tests use local fake monitors and isolated configuration/startup metadata. They do not call Steam or Discord. Release ZIPs in `dist` use a strict runtime allowlist and include both language guides. Privacy scanning covers source, staged files, reachable Git history and release archives.
@@ -184,7 +198,7 @@ Font regression tests also start a fresh process in the real tray initialization
 
 Resize regressions check native header row spacing, fixed footer bounds and pause/resume of background path checks during an interactive resize loop. A local timing probe reports repeated width-change costs; those timings are not a guarantee of drag frame rates on every system.
 
-Packaging builds into its own staging directory, so it does not overwrite a running copy in `bin`. A test-only interactive preview is available after building tests: `artifacts\native-menu\bin\SteamMonitorTray.Tests.exe --preview`. Its profile is disabled and startup registration is isolated; the preview closes automatically after three minutes.
+Packaging builds into its own staging directory, so it does not overwrite a running copy in `bin`. A test-only interactive preview is available after building tests: `artifacts\native-menu\bin\SteamMonitorTray.Tests.exe --preview`. Its profile does not start automatically and startup registration is isolated; the preview closes automatically after three minutes.
 
 Real sign-out/sign-in startup behavior should also be checked manually. Tests never sign you out or restart your computer.
 

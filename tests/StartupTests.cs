@@ -32,7 +32,7 @@ internal static class StartupTests {
                 key.SetValue("OtherApp.lnk", Approval(7), RegistryValueKind.Binary);
                 registration.SetRegistered(true);
                 Assert(registration.Read().Approval == StartupApproval.Disabled && ((byte[])key.GetValue("SteamMonitorTray.lnk"))[0] == 3, "registration preserves task manager disable");
-                Settings settings = Settings.Defaults(); settings.Language = "zh-Hans"; settings.Profiles.Add(new Profile { Name = "startup fixture", Enabled = false });
+                Settings settings = Settings.Defaults(); settings.Language = "zh-Hans"; settings.Profiles.Add(new Profile { Name = "startup fixture", AutoStart = false });
                 context = new TrayContext(settings, true, Path.Combine(folder, "settings"), registration);
                 Application.DoEvents();
                 string[] order = Menu(context).Items.Where(item => new string[] { "Settings", "LocalSettings", "StartupToggle", "LaunchDisplay", "Language" }.Contains(item.Key)).Select(item => item.Key).ToArray();

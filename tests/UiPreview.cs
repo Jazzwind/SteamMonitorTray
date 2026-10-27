@@ -5,9 +5,25 @@ using System.Windows.Forms;
 using SteamMonitorTray;
 
 internal static class UiPreview {
+    internal static int RunDrag() {
+        Settings settings = Settings.Defaults(); settings.Language = "zh-Hans";
+        for (int i = 0; i < 32; i++) settings.Profiles.Add(new Profile { Name = "Demo " + (i + 1).ToString("00"), AutoStart = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
+        using (SettingsForm form = new SettingsForm(settings, false)) {
+            form.Text = "SteamMonitorTray drag test"; form.ShowProfiles();
+            ListBox list = (ListBox)typeof(SettingsForm).GetField("list", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(form);
+            int moves = 0, none = 0, paints = 0, drops = 0;
+            Action receipt = delegate { File.WriteAllText(Path.Combine(Files.Bin, "drag-preview.json"), "{\"moveFeedback\":" + moves + ",\"noneFeedback\":" + none + ",\"invalidations\":" + paints + ",\"drops\":" + drops + ",\"first\":\"" + list.Items[0].ToString() + "\"}"); };
+            list.GiveFeedback += delegate(object sender, GiveFeedbackEventArgs e) { if ((e.Effect & DragDropEffects.Move) != 0) moves++; else none++; };
+            list.Invalidated += delegate { paints++; };
+            list.DragDrop += delegate { drops++; receipt(); };
+            form.FormClosed += delegate { receipt(); };
+            using (Timer timeout = new Timer { Interval = 300000 }) { timeout.Tick += delegate { form.Close(); }; timeout.Start(); Application.Run(form); }
+        }
+        return 0;
+    }
     internal static int Run() {
         Settings settings = Settings.Defaults(); settings.Language = "zh-Hans"; settings.LaunchMode = "AlwaysTray";
-        settings.Profiles.Add(new Profile { Name = "Demo monitor", Enabled = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
+        settings.Profiles.Add(new Profile { Name = "Demo monitor", AutoStart = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
         string data = Path.Combine(Files.Bin, "preview-data");
         StartupRegistration startup = new StartupRegistration(Path.Combine(data, "SteamMonitorTray.lnk"), Path.Combine(Files.Bin, "SteamMonitorTray.exe"), @"Software\SteamMonitorTray\Preview\" + Guid.NewGuid().ToString("N"), "SteamMonitorTray.lnk");
         TrayContext context = new TrayContext(settings, true, data, startup);

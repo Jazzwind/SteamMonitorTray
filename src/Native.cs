@@ -3,9 +3,22 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Collections.Specialized;
 
 namespace SteamMonitorTray {
     public static class Native {
+        // Only remove the known automation monochrome pair. Explicit Windows
+        // user/machine preferences and ordinary terminal environments survive.
+        public static void PrepareShellEnvironment(ProcessStartInfo info) {
+            NormalizeConsoleEnvironment(info.EnvironmentVariables,
+                Environment.GetEnvironmentVariable("NO_COLOR", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("NO_COLOR", EnvironmentVariableTarget.Machine),
+                Environment.GetEnvironmentVariable("TERM", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("TERM", EnvironmentVariableTarget.Machine));
+        }
+        public static void NormalizeConsoleEnvironment(StringDictionary environment, string noColor, string term) {
+            if (String.IsNullOrEmpty(environment["CODEX_THREAD_ID"]) || environment["NO_COLOR"] != "1" || environment["TERM"] != "dumb") return;
+            if (noColor == null) environment.Remove("NO_COLOR"); else environment["NO_COLOR"] = noColor;
+            if (term == null) environment.Remove("TERM"); else environment["TERM"] = term;
+        }
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         private struct StartupInfo {
             public int cb; public string reserved, desktop, title;

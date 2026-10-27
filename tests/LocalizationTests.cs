@@ -43,7 +43,7 @@ internal static class LocalizationTests {
     }
     internal static void FreshStartup(string root) {
         Settings settings = Settings.Defaults(); settings.Language = "zh-Hans";
-        settings.Profiles.Add(new Profile { Name = "Font fixture", Enabled = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
+        settings.Profiles.Add(new Profile { Name = "Font fixture", AutoStart = false, WorkingDirectory = @"D:\SteamProfiles\Demo", ConfigFile = @"D:\SteamProfiles\Demo\steam_monitor.conf", EnvFile = "", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
         StartupRegistration registration = new StartupRegistration(Path.Combine(root, "font-startup.lnk"), Path.Combine(Files.Bin, "SteamMonitorTray.exe"), @"Software\SteamMonitorTray\Tests\" + Guid.NewGuid().ToString("N"), "font-startup.lnk");
         TrayContext context = new TrayContext(settings, true, Path.Combine(root, "font-startup"), registration);
         try { Application.DoEvents(); SettingsForm form = context.OpenSettings(); Application.DoEvents(); CheckFonts(form, form.Font.SizeInPoints); form.ShowProfiles(); Application.DoEvents(); CheckFonts(form, form.Font.SizeInPoints); form.Close(); }
@@ -56,7 +56,7 @@ internal static class LocalizationTests {
         Assert(Json.ReadText<Settings>("{\"Language\":\"unsupported\"}").Language == "auto", "unsupported saved language falls back to auto");
         Assert(L.Resolve("auto", new string[] { "de-DE", "fr-CA", "en-US" }) == "fr" && L.Resolve("auto", new string[] { "zh-TW" }) == "zh-Hans" && L.Resolve("auto", new string[] { "ja-JP" }) == "en", "ordered UI language families and English fallback");
         Settings settings = Settings.Defaults(); settings.Language = "zh-Hans";
-        settings.Profiles.Add(new Profile { Name = "User profile — unchanged", Enabled = false, WorkingDirectory = @"D:\SteamProfiles\Primary", ConfigFile = @"D:\SteamProfiles\Primary\steam_monitor.conf", EnvFile = @"D:\SteamProfiles\Primary\.env", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
+        settings.Profiles.Add(new Profile { Name = "User profile — unchanged", AutoStart = false, WorkingDirectory = @"D:\SteamProfiles\Primary", ConfigFile = @"D:\SteamProfiles\Primary\steam_monitor.conf", EnvFile = @"D:\SteamProfiles\Primary\.env", Executable = @"D:\Python\Scripts\steam_monitor.exe" });
         using (SettingsForm form = new SettingsForm(settings, false)) {
             form.ShowInTaskbar = false; form.StartPosition = FormStartPosition.Manual;
             form.Location = new Point(Screen.PrimaryScreen.Bounds.Right + 1000, 0);

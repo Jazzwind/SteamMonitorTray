@@ -13,7 +13,10 @@ namespace SteamMonitorTray {
     [DataContract] public class Profile {
         [DataMember] public string Id = Guid.NewGuid().ToString("N");
         [DataMember] public string Name = L.Text("默认监测");
-        [DataMember] public bool Enabled = true;
+        [DataMember] public bool AutoStart = true;
+        [DataMember(Name = "Enabled", EmitDefaultValue = false)] private bool? legacyEnabled;
+        [OnDeserializing] private void BeforeRead(StreamingContext context) { AutoStart = true; }
+        [OnDeserialized] private void AfterRead(StreamingContext context) { if (legacyEnabled.HasValue) AutoStart = legacyEnabled.Value; legacyEnabled = null; }
         [DataMember] public string WorkingDirectory;
         [DataMember] public string ConfigFile;
         [DataMember] public string EnvFile;
@@ -22,11 +25,12 @@ namespace SteamMonitorTray {
         public Profile Copy() { return Json.ReadText<Profile>(Json.Text(this)); }
     }
     [DataContract] public class Settings {
-        [DataMember] public int Version = 1;
+        [DataMember] public int Version = 2;
+        public bool Migrated { get; private set; }
         [DataMember] public string LaunchMode = "ManualWindowStartupTray";
         [DataMember] public string Language = "auto";
         [OnDeserializing] private void BeforeRead(StreamingContext context) { Language = "auto"; }
-        [OnDeserialized] private void AfterRead(StreamingContext context) { Language = L.Normalize(Language); }
+        [OnDeserialized] private void AfterRead(StreamingContext context) { Language = L.Normalize(Language); if (Version == 1) { Version = 2; Migrated = true; } }
         [DataMember] public string ShellPath;
         [DataMember] public string PythonPath;
         [DataMember] public bool AutomaticRestart = true;
@@ -42,7 +46,7 @@ namespace SteamMonitorTray {
         public bool ShowOnLaunch(bool startup) { return LaunchMode == "AlwaysWindow" || (LaunchMode == "ManualWindowStartupTray" && !startup); }
         public void ValidateStructure() {
             Language = L.Normalize(Language);
-            if (Version != 1 || Profiles == null || RetrySeconds == null || RetrySeconds.Length != 3 || StableSeconds < 1 || StopTimeoutSeconds < 1) throw new InvalidDataException("设置格式无效。");
+            if (Version != 2 || Profiles == null || RetrySeconds == null || RetrySeconds.Length != 3 || StableSeconds < 1 || StopTimeoutSeconds < 1) throw new InvalidDataException("设置格式无效。");
             if (LaunchMode != "AlwaysWindow" && LaunchMode != "AlwaysTray" && LaunchMode != "ManualWindowStartupTray") throw new InvalidDataException("启动显示策略无效。");
             foreach (int delay in RetrySeconds) if (delay < 1 || delay > 3600) throw new InvalidDataException("重试间隔必须为 1–3600 秒。");
             HashSet<string> ids = new HashSet<string>();
@@ -76,6 +80,10 @@ namespace SteamMonitorTray {
         public static T Read<T>(string path) { return ReadText<T>(File.ReadAllText(path, Encoding.UTF8)); }
         public static void Save<T>(string path, T value) {
             Directory.CreateDirectory(Path.GetDirectoryName(path)); string temp = path + ".new";
+            if (value is Settings && File.Exists(path) && Read<Settings>(path).Migrated) {
+                string backup = path + ".v1.bak";
+                if (!File.Exists(backup)) File.Copy(path, backup, false);
+            }
             File.WriteAllText(temp, Text(value), new UTF8Encoding(false));
             if (File.Exists(path)) File.Replace(temp, path, null); else File.Move(temp, path);
         }
@@ -154,56 +162,58 @@ namespace SteamMonitorTray {
                 return inspection;
             }
         }
-        public static void All(Settings settings) {
-            settings.Validate(); HashSet<string> outputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (Profile p in settings.Profiles) {
-                if (!p.Enabled) continue;
-                Inspection inspection = Inspect(p, settings.PythonPath); p.LogDirectory = inspection.LogDirectory;
-                foreach (string path in inspection.Outputs) if (!outputs.Add(path)) throw new InvalidDataException("配置间存在重复输出文件，请为每个实例设置独立的日志、CSV 和状态文件。");
-            }
-        }
+        public static void All(Settings settings) { settings.Validate(); ForSave(settings, settings); }
         private static bool SamePath(string first, string second) { return String.Equals(first ?? "", second ?? "", StringComparison.OrdinalIgnoreCase); }
         private static bool PathsChanged(Profile p, Profile old) {
             return old == null || !SamePath(p.WorkingDirectory, old.WorkingDirectory) || !SamePath(p.ConfigFile, old.ConfigFile) || !SamePath(p.EnvFile, old.EnvFile) || !SamePath(p.Executable, old.Executable);
         }
-        // Preserve existing broken entries when saving unrelated options. New or
-        // changed enabled entries must pass the same static checks as a start.
+        // Preserve already broken entries when saving unrelated options.
         public static void ForSave(Settings settings, Settings original) {
             settings.ValidateStructure();
             if (!SamePath(settings.ShellPath, original.ShellPath) && !File.Exists(settings.ShellPath)) throw new InvalidDataException("PowerShell 程序不存在。");
             if (!SamePath(settings.PythonPath, original.PythonPath) && !File.Exists(settings.PythonPath)) throw new InvalidDataException("Python 程序不存在。");
-            Dictionary<string, bool> outputs = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> automatic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (Profile p in settings.Profiles) {
-                if (!p.Enabled) continue;
                 Profile old = original.Profiles.Find(item => item.Id == p.Id);
-                bool changed = PathsChanged(p, old) || !old.Enabled;
-                if (!File.Exists(settings.PythonPath)) {
-                    if (changed) throw new InvalidDataException("Python 程序不存在。");
-                    continue;
-                }
+                bool changed = PathsChanged(p, old) || (p.AutoStart && old != null && !old.AutoStart);
+                if (!File.Exists(settings.PythonPath)) { if (changed) throw new InvalidDataException("Python 程序不存在。"); continue; }
                 Inspection inspection;
                 try { inspection = Inspect(p, settings.PythonPath); }
                 catch (InvalidDataException) { if (changed) throw; else continue; }
                 p.LogDirectory = inspection.LogDirectory;
-                foreach (string path in inspection.Outputs) {
-                    bool previousChanged;
-                    if (outputs.TryGetValue(path, out previousChanged)) {
-                        if (changed || previousChanged) throw new InvalidDataException("配置间存在重复输出文件，请为每个实例设置独立的日志、CSV 和状态文件。");
-                    } else outputs.Add(path, changed);
+                if (p.AutoStart) foreach (string path in inspection.Outputs) {
+                    string other;
+                    if (automatic.TryGetValue(path, out other)) throw new InvalidDataException(L.Text("自动监测配置共用输出：{0} / {1}。请只勾选其中一个。", other, p.Name));
+                    automatic[path] = p.Name;
                 }
             }
         }
         public static void ForStart(Settings settings, Profile target) {
             settings.Validate(); Inspection current = Inspect(target, settings.PythonPath); target.LogDirectory = current.LogDirectory;
-            HashSet<string> outputs = new HashSet<string>(current.Outputs, StringComparer.OrdinalIgnoreCase);
-            foreach (Profile other in settings.Profiles) {
-                if (!other.Enabled || other.Id == target.Id) continue;
-                Inspection inspection;
-                try { inspection = Inspect(other, settings.PythonPath); }
-                catch (InvalidDataException) { continue; } // A missing/broken profile must not block unrelated valid profiles.
-                foreach (string path in inspection.Outputs) if (outputs.Contains(path)) throw new InvalidDataException("配置间存在重复输出文件，请为每个实例设置独立输出。");
-            }
         }
+    }
+    // A lease lasts for the entire dedicated session, including its idle prompt.
+    public sealed class OutputLeases {
+        private readonly Dictionary<string, HashSet<string>> owned = new Dictionary<string, HashSet<string>>();
+        public string Conflict(string id, IEnumerable<string> paths) {
+            foreach (string other in Conflicts(id, paths)) return other;
+            return null;
+        }
+        public IEnumerable<string> Conflicts(string id, IEnumerable<string> paths) {
+            HashSet<string> candidate = new HashSet<string>(paths, StringComparer.OrdinalIgnoreCase);
+            List<string> result = new List<string>();
+            foreach (var pair in owned) if (pair.Key != id && pair.Value.Overlaps(candidate)) result.Add(pair.Key);
+            return result;
+        }
+        public bool Acquire(string id, IEnumerable<string> paths) {
+            HashSet<string> candidate = new HashSet<string>(paths, StringComparer.OrdinalIgnoreCase);
+            HashSet<string> existing;
+            if (owned.TryGetValue(id, out existing)) candidate.UnionWith(existing);
+            if (Conflict(id, candidate) != null) return false;
+            owned[id] = candidate; return true;
+        }
+        public void Release(string id) { owned.Remove(id); }
+        public bool Contains(string id) { return owned.ContainsKey(id); }
     }
     public sealed class RetryPolicy {
         private int used;

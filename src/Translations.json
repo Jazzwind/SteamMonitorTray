@@ -1,8 +1,32 @@
 {
-  "常规": ["General", "Général", "Общие", "General", "عام"],
-  "监测配置": ["Monitoring profiles", "Profils de surveillance", "Профили мониторинга", "Perfiles de vigilancia", "ملفات المراقبة"],
-  "登录 Windows 后自动启动": ["Start automatically when signing in to Windows", "Démarrer à l’ouverture de session Windows", "Запускать при входе в Windows", "Iniciar al entrar en Windows", "التشغيل تلقائياً عند تسجيل الدخول إلى Windows"],
-  "运行环境": ["Runtime environment", "Environnement d’exécution", "Среда выполнения", "Entorno de ejecución", "بيئة التشغيل"],
+  "常规": [
+    "General",
+    "Général",
+    "Общие",
+    "General",
+    "عام"
+  ],
+  "监测配置": [
+    "Monitoring profiles",
+    "Profils de surveillance",
+    "Профили мониторинга",
+    "Perfiles de vigilancia",
+    "ملفات المراقبة"
+  ],
+  "登录 Windows 后自动启动": [
+    "Start automatically when signing in to Windows",
+    "Démarrer à l’ouverture de session Windows",
+    "Запускать при входе в Windows",
+    "Iniciar al entrar en Windows",
+    "التشغيل تلقائياً عند تسجيل الدخول إلى Windows"
+  ],
+  "运行环境": [
+    "Runtime environment",
+    "Environnement d’exécution",
+    "Среда выполнения",
+    "Entorno de ejecución",
+    "بيئة التشغيل"
+  ],
   "开机自启动和语言即时生效；其余选项保存后生效。": [
     "Start with Windows and language changes take effect immediately. Save to apply the other options.",
     "Le démarrage avec Windows et la langue s’appliquent immédiatement. Enregistrez pour appliquer les autres options.",
@@ -10,7 +34,13 @@
     "El inicio con Windows y el idioma se aplican de inmediato. Guarde para aplicar las demás opciones.",
     "تُطبَّق تغييرات بدء التشغيل مع Windows واللغة فوراً. احفظ لتطبيق الخيارات الأخرى."
   ],
-  "检查配置": ["Check configurations", "Vérifier les configurations", "Проверить настройки", "Comprobar configuraciones", "فحص الإعدادات"],
+  "检查配置": [
+    "Check configurations",
+    "Vérifier les configurations",
+    "Проверить настройки",
+    "Comprobar configuraciones",
+    "فحص الإعدادات"
+  ],
   "检查所有配置的文件路径、配置格式和输出文件冲突，不会启动监测或发送通知。": [
     "Check all profiles for missing files, configuration errors and conflicting output paths. This does not start monitoring or send notifications.",
     "Vérifiez les fichiers, le format des configurations et les conflits de sortie de tous les profils, sans démarrer la surveillance ni envoyer de notification.",
@@ -25,19 +55,97 @@
     "Comprobación terminada: {0} perfiles correctos; {1} requieren atención.",
     "اكتمل الفحص: نجح {0} من الملفات؛ ويحتاج {1} إلى المعالجة."
   ],
-  "PowerShell 程序不存在。": ["PowerShell executable not found.", "Exécutable PowerShell introuvable.", "Программа PowerShell не найдена.", "No se encuentra el ejecutable de PowerShell.", "لم يتم العثور على برنامج PowerShell."],
-  "Python 程序不存在。": ["Python executable not found.", "Exécutable Python introuvable.", "Программа Python не найдена.", "No se encuentra el ejecutable de Python.", "لم يتم العثور على برنامج Python."],
-  "工作目录不存在。": ["Working directory not found.", "Dossier de travail introuvable.", "Рабочая папка не найдена.", "No se encuentra la carpeta de trabajo.", "لم يتم العثور على مجلد العمل."],
-  "配置文件不存在。": ["Configuration file not found.", "Fichier de configuration introuvable.", "Файл конфигурации не найден.", "No se encuentra el archivo de configuración.", "لم يتم العثور على ملف الإعدادات."],
-  "密钥文件不存在。": ["Environment file not found.", "Fichier d’environnement introuvable.", "Файл окружения не найден.", "No se encuentra el archivo de entorno.", "لم يتم العثور على ملف البيئة."],
-  "监测程序不存在。": ["Monitor executable not found.", "Exécutable de surveillance introuvable.", "Программа мониторинга не найдена.", "No se encuentra el ejecutable del monitor.", "لم يتم العثور على برنامج المراقبة."],
-  "（文件缺失）": [" (missing files)", " (fichiers manquants)", " (нет файлов)", " (faltan archivos)", " (ملفات مفقودة)"],
-  "（配置需检查）": [" (check configuration)", " (configuration à vérifier)", " (проверьте настройки)", " (revise la configuración)", " (تحقق من الإعدادات)"],
-  "重新检查": ["Recheck", "Revérifier", "Проверить снова", "Comprobar de nuevo", "إعادة الفحص"],
-  "保存并恢复监测": ["Save and resume monitoring", "Enregistrer et reprendre", "Сохранить и продолжить", "Guardar y reanudar", "حفظ واستئناف المراقبة"],
-  "仅保存": ["Save only", "Enregistrer seulement", "Только сохранить", "Solo guardar", "حفظ فقط"],
-  "停止监测并编辑": ["Stop monitoring and edit", "Arrêter et modifier", "Остановить и изменить", "Detener y editar", "إيقاف المراقبة والتعديل"],
-  "重试进入编辑模式": ["Retry entering edit mode", "Réessayer la modification", "Повторить переход к правке", "Reintentar modo de edición", "إعادة محاولة وضع التعديل"],
+  "PowerShell 程序不存在。": [
+    "PowerShell executable not found.",
+    "Exécutable PowerShell introuvable.",
+    "Программа PowerShell не найдена.",
+    "No se encuentra el ejecutable de PowerShell.",
+    "لم يتم العثور على برنامج PowerShell."
+  ],
+  "Python 程序不存在。": [
+    "Python executable not found.",
+    "Exécutable Python introuvable.",
+    "Программа Python не найдена.",
+    "No se encuentra el ejecutable de Python.",
+    "لم يتم العثور على برنامج Python."
+  ],
+  "工作目录不存在。": [
+    "Working directory not found.",
+    "Dossier de travail introuvable.",
+    "Рабочая папка не найдена.",
+    "No se encuentra la carpeta de trabajo.",
+    "لم يتم العثور على مجلد العمل."
+  ],
+  "配置文件不存在。": [
+    "Configuration file not found.",
+    "Fichier de configuration introuvable.",
+    "Файл конфигурации не найден.",
+    "No se encuentra el archivo de configuración.",
+    "لم يتم العثور على ملف الإعدادات."
+  ],
+  "密钥文件不存在。": [
+    "Environment file not found.",
+    "Fichier d’environnement introuvable.",
+    "Файл окружения не найден.",
+    "No se encuentra el archivo de entorno.",
+    "لم يتم العثور على ملف البيئة."
+  ],
+  "监测程序不存在。": [
+    "Monitor executable not found.",
+    "Exécutable de surveillance introuvable.",
+    "Программа мониторинга не найдена.",
+    "No se encuentra el ejecutable del monitor.",
+    "لم يتم العثور على برنامج المراقبة."
+  ],
+  "（文件缺失）": [
+    " (missing files)",
+    " (fichiers manquants)",
+    " (нет файлов)",
+    " (faltan archivos)",
+    " (ملفات مفقودة)"
+  ],
+  "（配置需检查）": [
+    " (check configuration)",
+    " (configuration à vérifier)",
+    " (проверьте настройки)",
+    " (revise la configuración)",
+    " (تحقق من الإعدادات)"
+  ],
+  "重新检查": [
+    "Recheck",
+    "Revérifier",
+    "Проверить снова",
+    "Comprobar de nuevo",
+    "إعادة الفحص"
+  ],
+  "保存并恢复监测": [
+    "Save and resume monitoring",
+    "Enregistrer et reprendre",
+    "Сохранить и продолжить",
+    "Guardar y reanudar",
+    "حفظ واستئناف المراقبة"
+  ],
+  "仅保存": [
+    "Save only",
+    "Enregistrer seulement",
+    "Только сохранить",
+    "Solo guardar",
+    "حفظ فقط"
+  ],
+  "停止监测并编辑": [
+    "Stop monitoring and edit",
+    "Arrêter et modifier",
+    "Остановить и изменить",
+    "Detener y editar",
+    "إيقاف المراقبة والتعديل"
+  ],
+  "重试进入编辑模式": [
+    "Retry entering edit mode",
+    "Réessayer la modification",
+    "Повторить переход к правке",
+    "Reintentar modo de edición",
+    "إعادة محاولة وضع التعديل"
+  ],
   "查看模式：路径可以复制。点击“停止监测并编辑”后，程序会正常停止全部监测并关闭专用会话，再解锁本页。": [
     "View mode: paths can be copied. Select Stop monitoring and edit to stop all monitors gracefully, close their dedicated sessions and unlock this page.",
     "Mode consultation : les chemins peuvent être copiés. Arrêter et modifier arrête normalement les surveillances, ferme leurs sessions et déverrouille cette page.",
@@ -52,13 +160,55 @@
     "Modo de edición: la vigilancia está detenida. Puede solo guardar o guardar y reanudar los perfiles que estaban activos. Cancelar no reanuda la vigilancia.",
     "وضع التعديل: المراقبة متوقفة. يمكنك الحفظ فقط أو الحفظ واستئناف الملفات التي كانت تعمل. الإلغاء لا يستأنف المراقبة تلقائياً."
   ],
-  "正在停止监测…": ["Stopping monitoring…", "Arrêt de la surveillance…", "Остановка мониторинга…", "Deteniendo la vigilancia…", "جارٍ إيقاف المراقبة…"],
-  "正在关闭专用 PowerShell 会话…": ["Closing dedicated PowerShell sessions…", "Fermeture des sessions PowerShell…", "Закрытие сеансов PowerShell…", "Cerrando sesiones de PowerShell…", "جارٍ إغلاق جلسات PowerShell المخصصة…"],
-  "正在准备编辑…": ["Preparing to edit…", "Préparation de la modification…", "Подготовка к правке…", "Preparando la edición…", "جارٍ التحضير للتعديل…"],
-  "设置编辑模式": ["Editing settings", "Modification des paramètres", "Редактирование настроек", "Editando ajustes", "تعديل الإعدادات"],
-  "正在检查配置…": ["Checking configuration…", "Vérification de la configuration…", "Проверка настроек…", "Comprobando configuración…", "جارٍ فحص الإعدادات…"],
-  "配置检查通过。": ["Configuration checks passed.", "Configuration vérifiée.", "Настройки проверены.", "Configuración comprobada.", "اجتازت الإعدادات الفحص."],
-  "尚未关闭的会话：{0}": ["Sessions still open: {0}", "Sessions encore ouvertes : {0}", "Ещё открытые сеансы: {0}", "Sesiones aún abiertas: {0}", "الجلسات التي لا تزال مفتوحة: {0}"],
+  "正在停止监测…": [
+    "Stopping monitoring…",
+    "Arrêt de la surveillance…",
+    "Остановка мониторинга…",
+    "Deteniendo la vigilancia…",
+    "جارٍ إيقاف المراقبة…"
+  ],
+  "正在关闭专用 PowerShell 会话…": [
+    "Closing dedicated PowerShell sessions…",
+    "Fermeture des sessions PowerShell…",
+    "Закрытие сеансов PowerShell…",
+    "Cerrando sesiones de PowerShell…",
+    "جارٍ إغلاق جلسات PowerShell المخصصة…"
+  ],
+  "正在准备编辑…": [
+    "Preparing to edit…",
+    "Préparation de la modification…",
+    "Подготовка к правке…",
+    "Preparando la edición…",
+    "جارٍ التحضير للتعديل…"
+  ],
+  "设置编辑模式": [
+    "Editing settings",
+    "Modification des paramètres",
+    "Редактирование настроек",
+    "Editando ajustes",
+    "تعديل الإعدادات"
+  ],
+  "正在检查配置…": [
+    "Checking configuration…",
+    "Vérification de la configuration…",
+    "Проверка настроек…",
+    "Comprobando configuración…",
+    "جارٍ فحص الإعدادات…"
+  ],
+  "配置检查通过。": [
+    "Configuration checks passed.",
+    "Configuration vérifiée.",
+    "Настройки проверены.",
+    "Configuración comprobada.",
+    "اجتازت الإعدادات الفحص."
+  ],
+  "尚未关闭的会话：{0}": [
+    "Sessions still open: {0}",
+    "Sessions encore ouvertes : {0}",
+    "Ещё открытые сеансы: {0}",
+    "Sesiones aún abiertas: {0}",
+    "الجلسات التي لا تزال مفتوحة: {0}"
+  ],
   "编辑准备尚未完成。请检查控制台，完成或清空命令后重试；已停止的监测不会自动恢复。": [
     "Edit preparation is incomplete. Check the consoles, finish or clear any commands, then retry. Stopped monitoring will not resume automatically.",
     "La préparation n’est pas terminée. Vérifiez les consoles, terminez ou effacez les commandes et réessayez. Les surveillances arrêtées ne reprennent pas automatiquement.",
@@ -80,9 +230,27 @@
     "Automático (idioma del sistema)",
     "تلقائي (لغة النظام)"
   ],
-  "正在退出…": ["Quitting…", "Fermeture…", "Выход…", "Saliendo…", "جارٍ الخروج…"],
-  "正在退出": ["Quitting", "Fermeture", "Выход", "Saliendo", "جارٍ الخروج"],
-  "仍在等待退出": ["Still waiting to quit", "En attente de fermeture", "Ожидание выхода", "Esperando para salir", "لا يزال بانتظار الخروج"],
+  "正在退出…": [
+    "Quitting…",
+    "Fermeture…",
+    "Выход…",
+    "Saliendo…",
+    "جارٍ الخروج…"
+  ],
+  "正在退出": [
+    "Quitting",
+    "Fermeture",
+    "Выход",
+    "Saliendo",
+    "جارٍ الخروج"
+  ],
+  "仍在等待退出": [
+    "Still waiting to quit",
+    "En attente de fermeture",
+    "Ожидание выхода",
+    "Esperando para salir",
+    "لا يزال بانتظار الخروج"
+  ],
   "退出尚未完成，托盘会继续保留。请检查显示的控制台，完成或清空命令后重试退出；程序不会强制结束进程。": [
     "Quit has not completed; the tray remains available. Check the console, finish or clear the command, then try Quit again. Processes will not be forcibly terminated.",
     "La fermeture n’est pas terminée ; l’icône reste disponible. Vérifiez la console, terminez ou effacez la commande, puis réessayez de quitter. Aucun processus ne sera arrêté de force.",
@@ -698,5 +866,131 @@
     "SteamMonitorTray — Введите steam_monitor для запуска; Ctrl+C останавливает; сворачивание убирает окно в трей.",
     "SteamMonitorTray — Escriba steam_monitor para iniciar; Ctrl+C detiene; minimice a la bandeja.",
     "SteamMonitorTray — اكتب steam_monitor للبدء؛ Ctrl+C يوقف المراقبة؛ صغّر إلى شريط النظام."
+  ],
+  "打开 PowerShell 窗口": [
+    "Open PowerShell window",
+    "Ouvrir la fenêtre PowerShell",
+    "Открыть окно PowerShell",
+    "Abrir ventana de PowerShell",
+    "فتح نافذة PowerShell"
+  ],
+  "上移配置": [
+    "Move profile up",
+    "Monter le profil",
+    "Переместить профиль вверх",
+    "Subir perfil",
+    "نقل الملف إلى أعلى"
+  ],
+  "下移配置": [
+    "Move profile down",
+    "Descendre le profil",
+    "Переместить профиль вниз",
+    "Bajar perfil",
+    "نقل الملف إلى أسفل"
+  ],
+  "保存并打开": [
+    "Save and open",
+    "Enregistrer et ouvrir",
+    "Сохранить и открыть",
+    "Guardar y abrir",
+    "حفظ وفتح"
+  ],
+  "保存修改并打开 PowerShell？不会自动开始监测。": [
+    "Save changes and open PowerShell? Monitoring will not start automatically.",
+    "Enregistrer les modifications et ouvrir PowerShell ? La surveillance ne démarrera pas automatiquement.",
+    "Сохранить изменения и открыть PowerShell? Мониторинг автоматически не запустится.",
+    "¿Guardar los cambios y abrir PowerShell? La vigilancia no se iniciará automáticamente.",
+    "هل تريد حفظ التغييرات وفتح PowerShell؟ لن تبدأ المراقبة تلقائياً."
+  ],
+  "自动监测配置共用输出：{0} / {1}。请只勾选其中一个。": [
+    "Automatic profiles share output: {0} / {1}. Select only one for automatic monitoring.",
+    "Les profils automatiques partagent une sortie : {0} / {1}. N’en sélectionnez qu’un.",
+    "Профили автозапуска используют общие файлы: {0} / {1}. Выберите только один.",
+    "Los perfiles automáticos comparten archivos: {0} / {1}. Seleccione solo uno.",
+    "تشترك ملفات المراقبة التلقائية في الإخراج: {0} / {1}. حدد واحداً فقط."
+  ],
+  "输出正由 {0} 的会话占用。请正常关闭该 PowerShell，或使用“停止监测并编辑”后切换。": [
+    "Output is reserved by the session for {0}. Close that PowerShell normally, or use Stop monitoring and edit before switching.",
+    "La session de {0} réserve ces fichiers. Fermez normalement son PowerShell ou arrêtez la surveillance pour modifier avant de changer.",
+    "Файлы заняты сеансом {0}. Закройте его PowerShell обычным способом или используйте остановку и редактирование перед переключением.",
+    "La sesión de {0} reserva estos archivos. Cierre su PowerShell normalmente o detenga y edite antes de cambiar.",
+    "جلسة {0} تحجز ملفات الإخراج. أغلق PowerShell بشكل طبيعي أو استخدم إيقاف المراقبة والتحرير قبل التبديل."
+  ],
+  "已按配置顺序优先启动；以下配置与靠前配置共用输出或未通过检查，已跳过：{0}": [
+    "Started in profile order. Skipped profiles sharing output with an earlier profile or failing validation: {0}",
+    "Démarrage selon l’ordre des profils. Profils ignorés pour sorties partagées avec un profil précédent ou erreurs : {0}",
+    "Запуск по порядку профилей. Пропущены профили с общими файлами с предыдущим профилем или ошибками проверки: {0}",
+    "Inicio según el orden de perfiles. Omitidos por compartir archivos con un perfil anterior o por errores de validación: {0}",
+    "تم البدء حسب ترتيب الملفات. تم تخطي الملفات التي تشارك الإخراج مع ملف سابق أو تفشل في التحقق: {0}"
+  ],
+  "只控制打开托盘时是否自动监测；不勾选也能手动启动。共用输出的备用配置不能同时运行。": [
+    "Only controls automatic monitoring when the tray app opens. Manual start remains available. Profiles sharing output cannot run together.",
+    "Contrôle uniquement le démarrage automatique à l’ouverture. Le démarrage manuel reste possible. Les profils partageant des sorties ne peuvent pas fonctionner ensemble.",
+    "Управляет только автозапуском при открытии программы. Ручной запуск доступен всегда. Профили с общими файлами нельзя запускать одновременно.",
+    "Solo controla el inicio automático al abrir la aplicación. El inicio manual sigue disponible. Los perfiles con archivos compartidos no pueden ejecutarse juntos.",
+    "يتحكم فقط في بدء المراقبة تلقائياً عند فتح التطبيق. يبقى البدء اليدوي متاحاً. لا يمكن تشغيل ملفات ذات إخراج مشترك معاً."
+  ],
+  "（共用输出）": [
+    "(shared output)",
+    "(sortie partagée)",
+    "(общие файлы)",
+    "(archivos compartidos)",
+    "(إخراج مشترك)"
+  ],
+  "共用输出的配置不能同时自动监测。": [
+    "Profiles sharing output cannot both start automatically.",
+    "Les profils partageant des sorties ne peuvent pas tous démarrer automatiquement.",
+    "Профили с общими файлами не могут автоматически запускаться одновременно.",
+    "Los perfiles con archivos compartidos no pueden iniciarse automáticamente a la vez.",
+    "لا يمكن بدء ملفات ذات إخراج مشترك تلقائياً معاً."
+  ],
+  "共用输出，不能同时运行；切换前请正常关闭另一配置的 PowerShell 会话。": [
+    "Shared output: cannot run together. Close the other profile’s PowerShell session normally before switching.",
+    "Sorties partagées : exécution simultanée impossible. Fermez normalement la session PowerShell de l’autre profil avant de changer.",
+    "Общие файлы: одновременный запуск невозможен. Перед переключением закройте сеанс PowerShell другого профиля.",
+    "Archivos compartidos: no pueden ejecutarse juntos. Cierre normalmente la sesión PowerShell del otro perfil antes de cambiar.",
+    "إخراج مشترك: لا يمكن التشغيل معاً. أغلق جلسة PowerShell للملف الآخر بشكل طبيعي قبل التبديل."
+  ],
+  "正在切换配置，请稍候。": [
+    "Switching profiles; please wait.",
+    "Changement de profil en cours, veuillez patienter.",
+    "Переключение профилей, подождите.",
+    "Cambiando de perfil; espere.",
+    "جارٍ تبديل الملفات؛ يرجى الانتظار."
+  ],
+  "输出仍由 {0} 使用，请先停止该配置的监测。": [
+    "Output is still in use by {0}. Stop that profile’s monitoring first.",
+    "Les sorties sont encore utilisées par {0}. Arrêtez d’abord sa surveillance.",
+    "Файлы ещё используются профилем {0}. Сначала остановите его мониторинг.",
+    "{0} todavía utiliza los archivos. Detenga primero su vigilancia.",
+    "لا يزال {0} يستخدم ملفات الإخراج. أوقف مراقبته أولاً."
+  ],
+  "另一配置的 PowerShell 正在执行命令，请完成后再切换。": [
+    "The other profile’s PowerShell is running a command. Wait for it to finish before switching.",
+    "PowerShell de l’autre profil exécute une commande. Attendez sa fin avant de changer.",
+    "В PowerShell другого профиля выполняется команда. Дождитесь её завершения.",
+    "PowerShell del otro perfil está ejecutando un comando. Espere a que termine antes de cambiar.",
+    "ينفذ PowerShell للملف الآخر أمراً. انتظر انتهاءه قبل التبديل."
+  ],
+  "切换尚未完成。请完成或清空另一窗口中的命令后重试；不会强制关闭会话。": [
+    "Switching is incomplete. Finish or clear the command in the other window and retry; the session will not be forcibly closed.",
+    "Changement incomplet. Terminez ou effacez la commande dans l’autre fenêtre puis réessayez ; la session ne sera pas fermée de force.",
+    "Переключение не завершено. Завершите или очистите команду в другом окне и повторите; принудительного закрытия не будет.",
+    "Cambio incompleto. Termine o borre el comando en la otra ventana y reintente; la sesión no se cerrará a la fuerza.",
+    "لم يكتمل التبديل. أكمل الأمر أو امسحه في النافذة الأخرى وأعد المحاولة؛ لن تُغلق الجلسة بالقوة."
+  ],
+  "正在切换配置…": [
+    "Switching profiles…",
+    "Changement de profil…",
+    "Переключение профилей…",
+    "Cambiando de perfil…",
+    "جارٍ تبديل الملفات…"
+  ],
+  "共用输出，不能同时运行；切换时会正常关闭另一配置的空闲 PowerShell。": [
+    "Shared output: cannot run together. Switching normally closes the other profile’s idle PowerShell.",
+    "Sorties partagées : exécution simultanée impossible. Le changement ferme normalement le PowerShell inactif de l’autre profil.",
+    "Общие файлы: одновременный запуск невозможен. При переключении простаивающий PowerShell другого профиля закрывается обычным способом.",
+    "Archivos compartidos: no pueden ejecutarse juntos. Al cambiar se cierra normalmente el PowerShell inactivo del otro perfil.",
+    "إخراج مشترك: لا يمكن التشغيل معاً. يغلق التبديل PowerShell الخامل للملف الآخر بشكل طبيعي."
   ]
 }

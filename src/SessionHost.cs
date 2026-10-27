@@ -108,6 +108,7 @@ namespace SteamMonitorTray {
                     ProcessStartInfo info = new ProcessStartInfo(spec.ShellPath,
                         "-NoLogo -NoProfile -NoExit -ExecutionPolicy Bypass -File " + Native.Quote(Path.Combine(Files.Bin, "Session.ps1")) + " -SessionFile " + Native.Quote(args[0]));
                     info.UseShellExecute = false; info.WorkingDirectory = spec.Profile.WorkingDirectory;
+                    Native.PrepareShellEnvironment(info);
                     powerShell = Process.Start(info);
                     Thread controlThread = new Thread(ReadController); controlThread.IsBackground = true; controlThread.Start();
                     minimizeTimer = new Timer(delegate {
